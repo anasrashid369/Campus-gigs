@@ -11,6 +11,8 @@ import com.campusgigs.model.Wallet;
 import com.campusgigs.payment.PaymentGateway;
 import com.campusgigs.payment.PaymentRequest;
 import com.campusgigs.payment.PaymentResult;
+import com.campusgigs.pattern.observer.EventBus;
+import com.campusgigs.pattern.observer.WalletToppedUp;
 import com.campusgigs.service.WalletService;
 
 /** Default {@link WalletService}. */
@@ -20,13 +22,16 @@ public class WalletServiceImpl implements WalletService {
     private final TransactionDao transactionDao;
     private final PaymentGateway paymentGateway;
     private final TransactionManager transactions;
+    private final EventBus eventBus;
 
     public WalletServiceImpl(WalletDao walletDao, TransactionDao transactionDao,
-                             PaymentGateway paymentGateway, TransactionManager transactions) {
+                             PaymentGateway paymentGateway, TransactionManager transactions,
+                             EventBus eventBus) {
         this.walletDao = walletDao;
         this.transactionDao = transactionDao;
         this.paymentGateway = paymentGateway;
         this.transactions = transactions;
+        this.eventBus = eventBus;
     }
 
     @Override
@@ -67,7 +72,7 @@ public class WalletServiceImpl implements WalletService {
             throw new ValidationException("Payment was declined: " + payment.message());
         }
 
-        return transactions.call(() -> {
+        WalletDto updated = transactions.call(() -> {
             Wallet wallet = walletDao.findByUserIdForUpdate(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"));
             long newAvailable = Math.addExact(wallet.availableBalance(), amount);
@@ -75,6 +80,8 @@ public class WalletServiceImpl implements WalletService {
             transactionDao.insert(wallet.walletId(), null, TransactionType.TOPUP, amount, payment.reference());
             return new WalletDto(wallet.walletId(), userId, newAvailable, wallet.escrowBalance());
         });
+        eventBus.publish(new WalletToppedUp(userId, amount));
+        return updated;
     }
 
     private static WalletDto toDto(Wallet wallet) {
