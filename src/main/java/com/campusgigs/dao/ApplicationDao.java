@@ -35,4 +35,7 @@ public interface ApplicationDao {
 
     /** Rejects every PENDING application of the gig except the accepted one. */
     void rejectPendingExcept(long gigId, long acceptedApplicationId);
+
+    /** Lists all applications, or only those in the given status when it is not null, newest first. */
+    List<GigApplication> findAll(ApplicationStatus statusOrNull);
 }
