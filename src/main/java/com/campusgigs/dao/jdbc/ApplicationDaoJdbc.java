@@ -140,6 +140,20 @@ public class ApplicationDaoJdbc extends BaseJdbcDao implements ApplicationDao {
         });
     }
 
+    @Override
+    public List<GigApplication> findAll(ApplicationStatus statusOrNull) {
+        return withConnection(connection -> {
+            String order = " ORDER BY submitted_at DESC, application_id DESC";
+            try (PreparedStatement ps = connection.prepareStatement(
+                    statusOrNull == null ? SELECT + order : SELECT + " WHERE status = ?" + order)) {
+                if (statusOrNull != null) {
+                    ps.setString(1, statusOrNull.name());
+                }
+                return all(ps);
+            }
+        });
+    }
+
     private static Optional<GigApplication> first(PreparedStatement ps) throws SQLException {
         try (ResultSet rs = ps.executeQuery()) {
             return rs.next() ? Optional.of(map(rs)) : Optional.empty();
