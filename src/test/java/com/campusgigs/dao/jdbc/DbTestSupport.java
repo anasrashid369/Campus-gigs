@@ -57,6 +57,27 @@ final class DbTestSupport {
         }
     }
 
+    /** Inserts a throwaway skill and returns its id. */
+    static long createSkill(ConnectionProvider provider) throws SQLException {
+        try (Connection c = provider.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                     "INSERT INTO Skills (name) VALUES (?)", Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, "test-" + UUID.randomUUID());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                keys.next();
+                return keys.getLong(1);
+            }
+        }
+    }
+
+    /** Removes a test skill (rows in GigSkills that use it go with it). */
+    static void deleteSkill(ConnectionProvider provider, long skillId) throws SQLException {
+        try (Connection c = provider.getConnection()) {
+            run(c, "DELETE FROM Skills WHERE skill_id = ?", skillId);
+        }
+    }
+
     /** Inserts an OPEN gig of the client with the given budget and returns its id. */
     static long createGig(ConnectionProvider provider, long clientId, long categoryId, long budget)
             throws SQLException {

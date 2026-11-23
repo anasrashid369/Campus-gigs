@@ -7,7 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.campusgigs.exception.DataAccessException;
 import com.campusgigs.model.Gig;
+import com.campusgigs.model.Skill;
 import com.campusgigs.model.GigStatus;
+import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,5 +96,77 @@ class GigDaoJdbcTest {
                 java.util.EnumSet.of(GigStatus.ASSIGNED, GigStatus.SUBMITTED)));
         assertEquals(0, gigs.sumBudgetByFreelancerAndStatuses(freelancerId, java.util.EnumSet.of(GigStatus.APPROVED)));
         assertEquals(0, gigs.sumBudgetByFreelancerAndStatuses(clientId, java.util.EnumSet.of(GigStatus.ASSIGNED)));
+    }
+
+    @Test
+    void insertStoresAnOpenGigWithoutAFreelancer() throws Exception {
+        long newId = gigs.insert(clientId, categoryId, "Poster design", "Design an A3 poster", 450,
+                LocalDate.of(2031, 5, 20));
+        try {
+            Gig gig = gigs.findById(newId).orElseThrow();
+
+            assertEquals("Poster design", gig.title());
+            assertEquals("Design an A3 poster", gig.description());
+            assertEquals(450, gig.budget());
+            assertEquals(LocalDate.of(2031, 5, 20), gig.deadline());
+            assertEquals(GigStatus.OPEN, gig.status());
+            assertNull(gig.assignedFreelancerId());
+        } finally {
+            DbTestSupport.deleteGig(provider, newId);
+        }
+    }
+
+    @Test
+    void updateChangesTheEditableFieldsOnly() {
+        gigs.update(gigId, categoryId, "New title", "A new description", 700, LocalDate.of(2032, 1, 2));
+
+        Gig gig = gigs.findById(gigId).orElseThrow();
+        assertEquals("New title", gig.title());
+        assertEquals("A new description", gig.description());
+        assertEquals(700, gig.budget());
+        assertEquals(LocalDate.of(2032, 1, 2), gig.deadline());
+        assertEquals(clientId, gig.clientId());
+        assertEquals(GigStatus.OPEN, gig.status());
+    }
+
+    @Test
+    void listsGigsByClientFreelancerAndStatus() throws Exception {
+        long secondGig = DbTestSupport.createGig(provider, clientId, categoryId, 50);
+        try {
+            gigs.assign(secondGig, freelancerId, GigStatus.ASSIGNED);
+
+            List<Gig> ofClient = gigs.findByClientId(clientId);
+            assertEquals(2, ofClient.size());
+            assertEquals(secondGig, ofClient.get(0).gigId());
+            assertEquals(1, gigs.findByFreelancerId(freelancerId).size());
+            assertTrue(gigs.findByStatus(GigStatus.OPEN).stream().anyMatch(g -> g.gigId() == gigId));
+            assertTrue(gigs.findByStatus(GigStatus.OPEN).stream().noneMatch(g -> g.gigId() == secondGig));
+            assertTrue(gigs.findByClientId(freelancerId).isEmpty());
+        } finally {
+            DbTestSupport.deleteGig(provider, secondGig);
+        }
+    }
+
+    @Test
+    void replaceSkillsKeepsOnlyTheNewSet() throws Exception {
+        long skillA = DbTestSupport.createSkill(provider);
+        long skillB = DbTestSupport.createSkill(provider);
+        long skillC = DbTestSupport.createSkill(provider);
+        try {
+            gigs.replaceSkills(gigId, List.of(skillA, skillB));
+            assertEquals(2, gigs.findSkills(gigId).size());
+
+            gigs.replaceSkills(gigId, List.of(skillC));
+            List<Skill> skills = gigs.findSkills(gigId);
+            assertEquals(1, skills.size());
+            assertEquals(skillC, skills.get(0).skillId());
+
+            gigs.replaceSkills(gigId, List.of());
+            assertTrue(gigs.findSkills(gigId).isEmpty());
+        } finally {
+            DbTestSupport.deleteSkill(provider, skillA);
+            DbTestSupport.deleteSkill(provider, skillB);
+            DbTestSupport.deleteSkill(provider, skillC);
+        }
     }
 }
