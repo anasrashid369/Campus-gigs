@@ -1,7 +1,9 @@
 package com.campusgigs.service.impl;
 
 import com.campusgigs.dao.SettingsDao;
+import com.campusgigs.dao.UserDao;
 import com.campusgigs.exception.ValidationException;
+import com.campusgigs.model.Role;
 import com.campusgigs.service.SettingsService;
 
 import java.util.Collections;
@@ -9,7 +11,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.LongPredicate;
 import java.util.logging.Logger;
 
 /**
@@ -33,16 +34,11 @@ public class SettingsServiceImpl implements SettingsService {
             KEY_PLATFORM_FEE_PERCENT, KEY_MAX_APPLICATIONS_PER_FREELANCER);
 
     private final SettingsDao settingsDao;
-    private final LongPredicate isAdmin;
+    private final UserDao userDao;
 
-    /**
-     * @param settingsDao data access for PlatformSettings
-     * @param isAdmin     tells whether a user id belongs to an ADMIN. Wired to
-     *                    {@code UserDao.findById} once Abdullah's UserDao is merged.
-     */
-    public SettingsServiceImpl(SettingsDao settingsDao, LongPredicate isAdmin) {
+    public SettingsServiceImpl(SettingsDao settingsDao, UserDao userDao) {
         this.settingsDao = Objects.requireNonNull(settingsDao, "settingsDao");
-        this.isAdmin = Objects.requireNonNull(isAdmin, "isAdmin");
+        this.userDao = Objects.requireNonNull(userDao, "userDao");
     }
 
     @Override
@@ -94,7 +90,8 @@ public class SettingsServiceImpl implements SettingsService {
     }
 
     private void requireAdmin(long userId) {
-        if (!isAdmin.test(userId)) {
+        boolean admin = userDao.findById(userId).map(user -> user.role() == Role.ADMIN).orElse(false);
+        if (!admin) {
             throw new ValidationException("Only an admin can change platform settings");
         }
     }
