@@ -7,7 +7,9 @@ import com.campusgigs.model.Skill;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Data access for the Gigs and GigSkills tables.
@@ -54,4 +56,17 @@ public interface GigDao {
 
     /** Lists the skills the gig asks for, by name. */
     List<Skill> findSkills(long gigId);
+
+    /**
+     * Lists the OPEN gigs that match every given condition, newest first. A null condition is ignored.
+     *
+     * @param keyword text that must appear in the title or the description (not a pattern: % and _ are plain characters)
+     */
+    List<Gig> searchOpen(String keyword, Long categoryId, Long minBudget, Long maxBudget);
+
+    /** Returns, for each of the given gigs that asks for skills, the ids of those skills. */
+    Map<Long, Set<Long>> findSkillIdsByGigIds(Collection<Long> gigIds);
+
+    /** Lists all gigs, or only those in the given status when it is not null, newest first. */
+    List<Gig> findAll(GigStatus statusOrNull);
 }
