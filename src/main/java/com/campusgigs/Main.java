@@ -1,8 +1,10 @@
 package com.campusgigs;
 
+import com.campusgigs.dao.TransactionDao;
 import com.campusgigs.dao.TransactionManager;
 import com.campusgigs.dao.UserDao;
 import com.campusgigs.dao.SkillDao;
+import com.campusgigs.dao.WalletDao;
 import com.campusgigs.dao.jdbc.CategoryDaoJdbc;
 import com.campusgigs.dao.jdbc.ConnectionProvider;
 import com.campusgigs.dao.jdbc.FreelancerProfileDaoJdbc;
@@ -24,17 +26,20 @@ import com.campusgigs.presentation.admin.UsersPanel;
 import com.campusgigs.presentation.auth.LoginPanel;
 import com.campusgigs.presentation.auth.RegisterPanel;
 import com.campusgigs.presentation.common.ProfilePanel;
+import com.campusgigs.presentation.common.WalletPanel;
 import com.campusgigs.presentation.freelancer.FreelancerProfilePanel;
 import com.campusgigs.service.AdminService;
 import com.campusgigs.service.AuthService;
 import com.campusgigs.service.ProfileService;
 import com.campusgigs.service.SettingsService;
+import com.campusgigs.service.TransactionService;
 import com.campusgigs.service.UserService;
 import com.campusgigs.service.WalletService;
 import com.campusgigs.service.impl.AdminServiceImpl;
 import com.campusgigs.service.impl.AuthServiceImpl;
 import com.campusgigs.service.impl.ProfileServiceImpl;
 import com.campusgigs.service.impl.SettingsServiceImpl;
+import com.campusgigs.service.impl.TransactionServiceImpl;
 import com.campusgigs.service.impl.UserServiceImpl;
 import com.campusgigs.service.impl.WalletServiceImpl;
 
@@ -69,8 +74,11 @@ public final class Main {
         SkillDao skillDao = new SkillDaoJdbc(db);
 
         SettingsService settingsService = new SettingsServiceImpl(new SettingsDaoJdbc(db), userDao);
-        WalletService walletService = new WalletServiceImpl(new WalletDaoJdbc(db), new TransactionDaoJdbc(db),
+        WalletDao walletDao = new WalletDaoJdbc(db);
+        TransactionDao transactionDao = new TransactionDaoJdbc(db);
+        WalletService walletService = new WalletServiceImpl(walletDao, transactionDao,
                 new SimulatedPaymentGateway(), transactions, EventBus.getInstance());
+        TransactionService transactionService = new TransactionServiceImpl(walletDao, transactionDao);
         AuthService authService = new AuthServiceImpl(userDao, walletService, settingsService, transactions);
         UserService userService = new UserServiceImpl(userDao);
         AdminService adminService = new AdminServiceImpl(userDao, new CategoryDaoJdbc(db), skillDao);
@@ -80,14 +88,15 @@ public final class Main {
         MainFrame frame = new MainFrame();
         frame.addCard(MainFrame.LOGIN_CARD, new LoginPanel(authService, frame));
         frame.addCard(MainFrame.REGISTER_CARD, new RegisterPanel(authService, frame));
-        registerScreens(frame, new Services(userService, adminService, profileService, settingsService));
+        registerScreens(frame, new Services(userService, adminService, profileService, settingsService,
+                walletService, transactionService));
         frame.showCard(MainFrame.LOGIN_CARD);
         frame.setVisible(true);
     }
 
     /** The services the screens need; add a field when a new screen needs another service. */
     private record Services(UserService users, AdminService admin, ProfileService profiles,
-                            SettingsService settings) {
+                            SettingsService settings, WalletService wallets, TransactionService transactions) {
     }
 
     /** Navigation buttons per role, in menu order. Add new screens here. */
@@ -95,6 +104,10 @@ public final class Main {
         for (Role role : Role.values()) {
             frame.addNavigationItem(role, "My Profile", () -> new ProfilePanel(services.users()));
         }
+        frame.addNavigationItem(Role.CLIENT, "Wallet",
+                () -> new WalletPanel(services.wallets(), services.transactions(), true));
+        frame.addNavigationItem(Role.FREELANCER, "Wallet",
+                () -> new WalletPanel(services.wallets(), services.transactions(), false));
         frame.addNavigationItem(Role.FREELANCER, "Skills and Portfolio",
                 () -> new FreelancerProfilePanel(services.profiles()));
         frame.addNavigationItem(Role.ADMIN, "Users", () -> new UsersPanel(services.admin()));
