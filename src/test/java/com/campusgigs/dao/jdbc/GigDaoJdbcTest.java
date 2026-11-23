@@ -11,6 +11,8 @@ import com.campusgigs.model.Skill;
 import com.campusgigs.model.GigStatus;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -168,5 +170,95 @@ class GigDaoJdbcTest {
             DbTestSupport.deleteSkill(provider, skillB);
             DbTestSupport.deleteSkill(provider, skillC);
         }
+    }
+
+    @Test
+    void searchOpenFiltersByKeywordCategoryAndBudget() throws Exception {
+        long otherCategory = DbTestSupport.createCategory(provider);
+        long cheap = gigs.insert(clientId, categoryId, "Quick logo sketch", "Just a sketch", 80, LocalDate.of(2031, 1, 1));
+        long other = gigs.insert(clientId, otherCategory, "Essay editing", "Proofread my essay", 500, LocalDate.of(2031, 1, 1));
+        try {
+            assertTrue(ids(gigs.searchOpen("logo", null, null, null)).contains(cheap));
+            assertTrue(!ids(gigs.searchOpen("logo", null, null, null)).contains(other));
+            assertTrue(ids(gigs.searchOpen("PROOFREAD", null, null, null)).contains(other));
+            assertEquals(List.of(other), ids(gigs.searchOpen(null, otherCategory, null, null)));
+            assertTrue(ids(gigs.searchOpen(null, categoryId, 100L, null)).contains(gigId));
+            assertTrue(!ids(gigs.searchOpen(null, categoryId, 100L, null)).contains(cheap));
+            assertTrue(ids(gigs.searchOpen(null, categoryId, null, 100L)).contains(cheap));
+            assertTrue(!ids(gigs.searchOpen(null, categoryId, null, 100L)).contains(gigId));
+        } finally {
+            DbTestSupport.deleteGig(provider, cheap);
+            DbTestSupport.deleteGig(provider, other);
+            DbTestSupport.deleteCategory(provider, otherCategory);
+        }
+    }
+
+    @Test
+    void searchOpenTreatsPercentAndUnderscoreAsPlainCharacters() throws Exception {
+        long percent = gigs.insert(clientId, categoryId, "100% satisfaction", "Percent sign in the title", 10,
+                LocalDate.of(2031, 1, 1));
+        long plain = gigs.insert(clientId, categoryId, "1000 satisfaction", "No percent sign", 10, LocalDate.of(2031, 1, 1));
+        long underscore = gigs.insert(clientId, categoryId, "snake_case helper", "An underscore", 10, LocalDate.of(2031, 1, 1));
+        long letters = gigs.insert(clientId, categoryId, "snakeXcase helper", "No underscore", 10, LocalDate.of(2031, 1, 1));
+        try {
+            List<Long> percentHits = ids(gigs.searchOpen("100%", categoryId, null, null));
+            assertTrue(percentHits.contains(percent));
+            assertTrue(!percentHits.contains(plain));
+
+            List<Long> underscoreHits = ids(gigs.searchOpen("snake_case", categoryId, null, null));
+            assertTrue(underscoreHits.contains(underscore));
+            assertTrue(!underscoreHits.contains(letters));
+        } finally {
+            for (long id : new long[] {percent, plain, underscore, letters}) {
+                DbTestSupport.deleteGig(provider, id);
+            }
+        }
+    }
+
+    @Test
+    void searchOpenNeverReturnsGigsThatAreNotOpen() {
+        gigs.assign(gigId, freelancerId, GigStatus.ASSIGNED);
+
+        assertTrue(!ids(gigs.searchOpen(null, categoryId, null, null)).contains(gigId));
+    }
+
+    @Test
+    void searchOpenIsNotFooledByQuotesInTheKeyword() {
+        assertTrue(gigs.searchOpen("x' OR '1'='1", null, null, null).isEmpty());
+    }
+
+    @Test
+    void findsTheSkillIdsOfSeveralGigsAtOnce() throws Exception {
+        long skillA = DbTestSupport.createSkill(provider);
+        long skillB = DbTestSupport.createSkill(provider);
+        long second = DbTestSupport.createGig(provider, clientId, categoryId, 10);
+        try {
+            gigs.replaceSkills(gigId, List.of(skillA, skillB));
+            gigs.replaceSkills(second, List.of(skillB));
+
+            Map<Long, Set<Long>> result = gigs.findSkillIdsByGigIds(List.of(gigId, second, -1L));
+
+            assertEquals(Set.of(skillA, skillB), result.get(gigId));
+            assertEquals(Set.of(skillB), result.get(second));
+            assertTrue(!result.containsKey(-1L));
+            assertTrue(gigs.findSkillIdsByGigIds(List.of()).isEmpty());
+        } finally {
+            DbTestSupport.deleteGig(provider, second);
+            DbTestSupport.deleteSkill(provider, skillA);
+            DbTestSupport.deleteSkill(provider, skillB);
+        }
+    }
+
+    @Test
+    void findAllCanFilterByStatus() {
+        gigs.assign(gigId, freelancerId, GigStatus.ASSIGNED);
+
+        assertTrue(ids(gigs.findAll(null)).contains(gigId));
+        assertTrue(ids(gigs.findAll(GigStatus.ASSIGNED)).contains(gigId));
+        assertTrue(!ids(gigs.findAll(GigStatus.OPEN)).contains(gigId));
+    }
+
+    private static List<Long> ids(List<Gig> list) {
+        return list.stream().map(Gig::gigId).toList();
     }
 }
