@@ -14,6 +14,7 @@ import com.campusgigs.dao.jdbc.UserDaoJdbc;
 import com.campusgigs.dao.jdbc.WalletDaoJdbc;
 import com.campusgigs.exception.ConfigurationException;
 import com.campusgigs.model.Role;
+import com.campusgigs.pattern.observer.EventBus;
 import com.campusgigs.payment.SimulatedPaymentGateway;
 import com.campusgigs.presentation.MainFrame;
 import com.campusgigs.presentation.admin.CategoriesPanel;
@@ -69,7 +70,7 @@ public final class Main {
 
         SettingsService settingsService = new SettingsServiceImpl(new SettingsDaoJdbc(db), userDao);
         WalletService walletService = new WalletServiceImpl(new WalletDaoJdbc(db), new TransactionDaoJdbc(db),
-                new SimulatedPaymentGateway(), transactions);
+                new SimulatedPaymentGateway(), transactions, EventBus.getInstance());
         AuthService authService = new AuthServiceImpl(userDao, walletService, settingsService, transactions);
         UserService userService = new UserServiceImpl(userDao);
         AdminService adminService = new AdminServiceImpl(userDao, new CategoryDaoJdbc(db), skillDao);
