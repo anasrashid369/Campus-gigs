@@ -30,7 +30,7 @@ public interface WalletService {
      * Adds tokens through the payment gateway and, after the transaction commits,
      * publishes a {@code WalletToppedUp} event.
      *
-     * @throws com.campusgigs.exception.ValidationException if the amount is outside the allowed range or the payment is declined
+     * @throws com.campusgigs.exception.ValidationException if the amount is outside the allowed range, the user is not a client, or the payment is declined
      * @throws com.campusgigs.exception.ResourceNotFoundException if the user has no wallet
      */
     WalletDto topUp(long userId, long amount);
