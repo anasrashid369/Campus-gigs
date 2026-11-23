@@ -64,6 +64,21 @@ public class TransactionDaoJdbc extends BaseJdbcDao implements TransactionDao {
         });
     }
 
+    @Override
+    public long sumByType(long walletId, TransactionType type) {
+        return withConnection(connection -> {
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "SELECT COALESCE(SUM(amount), 0) FROM Transactions WHERE wallet_id = ? AND type = ?")) {
+                ps.setLong(1, walletId);
+                ps.setString(2, type.name());
+                try (ResultSet rs = ps.executeQuery()) {
+                    rs.next();
+                    return rs.getLong(1);
+                }
+            }
+        });
+    }
+
     private static Transaction map(ResultSet rs) throws SQLException {
         long gig = rs.getLong("gig_id");
         Long gigId = rs.wasNull() ? null : gig;
