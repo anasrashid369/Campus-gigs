@@ -62,7 +62,8 @@ sudo mysql -e "DROP DATABASE IF EXISTS campus_gigs;" && sudo mysql < db/01_schem
 | DAO base | `dao.jdbc.BaseJdbcDao` (extend it for JDBC DAOs; it joins the running transaction automatically) |
 | Models | records in `model/`: `User`, `Gig`, `GigApplication`, `Wallet`, `Transaction`, `Review`, `Dispute`, `Notification`, `FreelancerProfile`, `Skill`, `GigCategory`, enums `Role`, `AccountStatus`, `GigStatus`, `ApplicationStatus`, `TransactionType`, `DisputeStatus`, `DisputeDecision` |
 | Exceptions | `ValidationException` and `ResourceNotFoundException` (messages are safe to show the user), `DataAccessException`, `ConfigurationException` (technical; log them, show a generic message) |
-| Wallet | `service.WalletService`, `service.TransactionService`, DTOs `WalletDto`, `TransactionDto` |
+| Wallet and escrow | `service.WalletService` (createWallet, getWallet, topUp for clients, withdraw for freelancers), `service.EscrowService` (holdInEscrow, releaseToFreelancer, refundToClient), `service.TransactionService`, `service.EarningsService`, DTOs `WalletDto`, `TransactionDto`, `PayoutDto`, `EarningsDto` |
+| Gig lifecycle | `pattern.state.GigStateMachine` + `GigAction`, `service.GigLifecycleService` (hire, submitWork, approve, requestRevision, raiseDispute), `service.DisputeService` (admin review and resolve), `dao.GigDao`, `dao.DisputeDao`, DTOs `GigDto`, `DisputeDto` |
 | Payment | `payment.PaymentGateway`, `SimulatedPaymentGateway` |
 | Schema | `db/01_schema.sql` (14 tables) |
 
@@ -89,7 +90,7 @@ return transactions.call(() -> {
 
 - Settings table is `PlatformSettings` (columns `setting_key`, `setting_value`), per the ERD.
 - Setting keys (strings): `initial_token_balance` (default 1000), `platform_fee_percent` (default 5), `max_applications_per_freelancer` (default 5).
-- Gig status values: `OPEN, ASSIGNED, SUBMITTED, APPROVED, DISPUTED, RESOLVED, CANCELLED`.
+- Gig status values: `OPEN, ASSIGNED, SUBMITTED, APPROVED, DISPUTED, RESOLVED, CANCELLED` (cancel only from OPEN). Every status change goes through `GigStateMachine`.
 - Application status: `PENDING, ACCEPTED, REJECTED, WITHDRAWN`.
 - Password hash stored in `Users.password_hash` as `pbkdf2$<iterations>$<saltBase64>$<hashBase64>` (PBKDF2WithHmacSHA256, 120000 iterations, 16 byte salt, 32 byte key). Owner: Abdullah (`util.PasswordHasher`).
 - EventBus event names, identical everywhere: `ApplicationSubmitted, ApplicationWithdrawn, FreelancerHired, WorkSubmitted, WorkApproved, RevisionRequested, DisputeRaised, DisputeResolved, WalletToppedUp, ReviewPosted`.
