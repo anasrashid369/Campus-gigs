@@ -2,6 +2,7 @@ package com.campusgigs.dao.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.campusgigs.pattern.observer.EventBus;
 import com.campusgigs.payment.SimulatedPaymentGateway;
 import com.campusgigs.service.WalletService;
 import com.campusgigs.service.impl.TransactionServiceImpl;
@@ -29,7 +30,7 @@ class WalletTopUpConcurrencyTest {
         WalletDaoJdbc walletDao = new WalletDaoJdbc(provider);
         TransactionDaoJdbc ledger = new TransactionDaoJdbc(provider);
         wallets = new WalletServiceImpl(walletDao, ledger, new SimulatedPaymentGateway(),
-                new TransactionHelper(provider));
+                new TransactionHelper(provider), new EventBus());
         history = new TransactionServiceImpl(walletDao, ledger);
         userId = DbTestSupport.createUser(provider);
     }

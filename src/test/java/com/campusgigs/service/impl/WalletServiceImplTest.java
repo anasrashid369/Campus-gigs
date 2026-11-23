@@ -19,8 +19,12 @@ import com.campusgigs.exception.ValidationException;
 import com.campusgigs.model.TransactionType;
 import com.campusgigs.model.Wallet;
 import com.campusgigs.payment.PaymentGateway;
+import com.campusgigs.pattern.observer.EventBus;
+import com.campusgigs.pattern.observer.WalletToppedUp;
 import com.campusgigs.payment.PaymentResult;
 import com.campusgigs.service.WalletService;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +41,8 @@ class WalletServiceImplTest {
     @Mock PaymentGateway gateway;
 
     private WalletServiceImpl service;
+    private final EventBus eventBus = new EventBus();
+    private final List<WalletToppedUp> published = new ArrayList<>();
 
     /** Runs the work directly; real commit/rollback is covered by the JDBC tests. */
     private final TransactionManager passThrough = new TransactionManager() {
@@ -53,7 +59,8 @@ class WalletServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new WalletServiceImpl(walletDao, transactionDao, gateway, passThrough);
+        eventBus.subscribe(WalletToppedUp.class, published::add);
+        service = new WalletServiceImpl(walletDao, transactionDao, gateway, passThrough, eventBus);
     }
 
     @Test
@@ -154,5 +161,39 @@ class WalletServiceImplTest {
         when(walletDao.findByUserId(1)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service.getWallet(1));
+    }
+
+    @Test
+    void topUpPublishesWalletToppedUpEvent() {
+        Wallet wallet = new Wallet(7, 1, 100, 0, 0);
+        when(walletDao.findByUserId(1)).thenReturn(Optional.of(wallet));
+        when(walletDao.findByUserIdForUpdate(1)).thenReturn(Optional.of(wallet));
+        when(gateway.process(any())).thenReturn(PaymentResult.succeeded("SIM-1"));
+
+        service.topUp(1, 250);
+
+        assertEquals(List.of(new WalletToppedUp(1, 250)), published);
+    }
+
+    @Test
+    void declinedTopUpPublishesNoEvent() {
+        when(walletDao.findByUserId(1)).thenReturn(Optional.of(new Wallet(7, 1, 100, 0, 0)));
+        when(gateway.process(any())).thenReturn(PaymentResult.failed("declined"));
+
+        assertThrows(ValidationException.class, () -> service.topUp(1, 50));
+
+        assertEquals(0, published.size());
+    }
+
+    @Test
+    void failedDatabaseWorkPublishesNoEvent() {
+        Wallet wallet = new Wallet(7, 1, 100, 0, 0);
+        when(walletDao.findByUserId(1)).thenReturn(Optional.of(wallet));
+        when(walletDao.findByUserIdForUpdate(1)).thenReturn(Optional.empty());
+        when(gateway.process(any())).thenReturn(PaymentResult.succeeded("SIM-1"));
+
+        assertThrows(ResourceNotFoundException.class, () -> service.topUp(1, 50));
+
+        assertEquals(0, published.size());
     }
 }
