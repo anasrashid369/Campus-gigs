@@ -1,6 +1,7 @@
 package com.campusgigs.presentation.common;
 
 import com.campusgigs.dto.GigDto;
+import com.campusgigs.model.ApplicationStatus;
 import com.campusgigs.model.GigStatus;
 
 import java.time.LocalDate;
@@ -21,6 +22,16 @@ public final class StatusFormat {
             case DISPUTED -> "Disputed";
             case RESOLVED -> "Resolved";
             case CANCELLED -> "Cancelled";
+        };
+    }
+
+    /** A readable name for an application status. */
+    public static String applicationStatus(ApplicationStatus status) {
+        return switch (status) {
+            case PENDING -> "Pending";
+            case ACCEPTED -> "Accepted";
+            case REJECTED -> "Not chosen";
+            case WITHDRAWN -> "Withdrawn";
         };
     }
 
