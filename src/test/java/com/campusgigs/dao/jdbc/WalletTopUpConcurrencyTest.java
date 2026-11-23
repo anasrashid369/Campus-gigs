@@ -30,7 +30,7 @@ class WalletTopUpConcurrencyTest {
         WalletDaoJdbc walletDao = new WalletDaoJdbc(provider);
         TransactionDaoJdbc ledger = new TransactionDaoJdbc(provider);
         wallets = new WalletServiceImpl(walletDao, ledger, new SimulatedPaymentGateway(),
-                new TransactionHelper(provider), new EventBus());
+                new TransactionHelper(provider), new EventBus(), new UserDaoJdbc(provider));
         history = new TransactionServiceImpl(walletDao, ledger);
         userId = DbTestSupport.createUser(provider);
     }

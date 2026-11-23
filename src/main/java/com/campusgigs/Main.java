@@ -77,7 +77,7 @@ public final class Main {
         WalletDao walletDao = new WalletDaoJdbc(db);
         TransactionDao transactionDao = new TransactionDaoJdbc(db);
         WalletService walletService = new WalletServiceImpl(walletDao, transactionDao,
-                new SimulatedPaymentGateway(), transactions, EventBus.getInstance());
+                new SimulatedPaymentGateway(), transactions, EventBus.getInstance(), userDao);
         TransactionService transactionService = new TransactionServiceImpl(walletDao, transactionDao);
         AuthService authService = new AuthServiceImpl(userDao, walletService, settingsService, transactions);
         UserService userService = new UserServiceImpl(userDao);
