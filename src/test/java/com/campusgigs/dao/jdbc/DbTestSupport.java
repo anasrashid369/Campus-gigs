@@ -24,16 +24,71 @@ final class DbTestSupport {
 
     /** Inserts a throwaway client user and returns its id. */
     static long createUser(ConnectionProvider provider) throws SQLException {
+        return createUser(provider, "CLIENT");
+    }
+
+    /** Inserts a throwaway user with the given role (ADMIN, CLIENT or FREELANCER) and returns its id. */
+    static long createUser(ConnectionProvider provider, String role) throws SQLException {
         try (Connection c = provider.getConnection();
              PreparedStatement ps = c.prepareStatement(
-                     "INSERT INTO Users (role, full_name, email, password_hash) VALUES ('CLIENT', 'Test', ?, 'x')",
+                     "INSERT INTO Users (role, full_name, email, password_hash) VALUES (?, 'Test', ?, 'x')",
                      Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, "test-" + UUID.randomUUID() + "@example.com");
+            ps.setString(1, role);
+            ps.setString(2, "test-" + UUID.randomUUID() + "@example.com");
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 keys.next();
                 return keys.getLong(1);
             }
+        }
+    }
+
+    /** Inserts a throwaway gig category and returns its id. */
+    static long createCategory(ConnectionProvider provider) throws SQLException {
+        try (Connection c = provider.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                     "INSERT INTO GigCategories (name) VALUES (?)", Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, "test-" + UUID.randomUUID());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                keys.next();
+                return keys.getLong(1);
+            }
+        }
+    }
+
+    /** Inserts an OPEN gig of the client with the given budget and returns its id. */
+    static long createGig(ConnectionProvider provider, long clientId, long categoryId, long budget)
+            throws SQLException {
+        try (Connection c = provider.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                     "INSERT INTO Gigs (client_id, category_id, title, description, budget, deadline) "
+                             + "VALUES (?, ?, 'Test gig', 'Test description', ?, '2030-01-01')",
+                     Statement.RETURN_GENERATED_KEYS)) {
+            ps.setLong(1, clientId);
+            ps.setLong(2, categoryId);
+            ps.setLong(3, budget);
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                keys.next();
+                return keys.getLong(1);
+            }
+        }
+    }
+
+    /** Removes a test gig together with its disputes and ledger rows. */
+    static void deleteGig(ConnectionProvider provider, long gigId) throws SQLException {
+        try (Connection c = provider.getConnection()) {
+            run(c, "DELETE FROM Disputes WHERE gig_id = ?", gigId);
+            run(c, "DELETE FROM Transactions WHERE gig_id = ?", gigId);
+            run(c, "DELETE FROM Gigs WHERE gig_id = ?", gigId);
+        }
+    }
+
+    /** Removes a test category. */
+    static void deleteCategory(ConnectionProvider provider, long categoryId) throws SQLException {
+        try (Connection c = provider.getConnection()) {
+            run(c, "DELETE FROM GigCategories WHERE category_id = ?", categoryId);
         }
     }
 
