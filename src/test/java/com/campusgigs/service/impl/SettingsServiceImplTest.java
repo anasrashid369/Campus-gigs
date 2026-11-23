@@ -8,10 +8,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import com.campusgigs.dao.SettingsDao;
+import com.campusgigs.dao.UserDao;
 import com.campusgigs.exception.ValidationException;
+import com.campusgigs.model.AccountStatus;
+import com.campusgigs.model.Role;
+import com.campusgigs.model.User;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,14 +33,24 @@ class SettingsServiceImplTest {
 
     private static final long ADMIN_ID = 1;
     private static final long CLIENT_ID = 2;
+    private static final long UNKNOWN_ID = 99;
 
     @Mock SettingsDao settingsDao;
+    @Mock UserDao userDao;
 
     private SettingsServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new SettingsServiceImpl(settingsDao, userId -> userId == ADMIN_ID);
+        lenient().when(userDao.findById(ADMIN_ID)).thenReturn(Optional.of(user(ADMIN_ID, Role.ADMIN)));
+        lenient().when(userDao.findById(CLIENT_ID)).thenReturn(Optional.of(user(CLIENT_ID, Role.CLIENT)));
+        lenient().when(userDao.findById(UNKNOWN_ID)).thenReturn(Optional.empty());
+        service = new SettingsServiceImpl(settingsDao, userDao);
+    }
+
+    private static User user(long id, Role role) {
+        return new User(id, role, "User " + id, "user" + id + "@uni.edu.pk", "pbkdf2$x",
+                AccountStatus.ACTIVE, LocalDateTime.of(2026, 11, 1, 9, 0));
     }
 
     @Test
@@ -104,6 +120,8 @@ class SettingsServiceImplTest {
                 () -> service.update(CLIENT_ID, KEY_PLATFORM_FEE_PERCENT, "7"));
 
         assertEquals("Only an admin can change platform settings", e.getMessage());
+        assertThrows(ValidationException.class,
+                () -> service.update(UNKNOWN_ID, KEY_PLATFORM_FEE_PERCENT, "7"));
         verify(settingsDao, never()).upsert(anyString(), anyString());
     }
 
