@@ -149,9 +149,9 @@ Rules:
 - Do not use GitHub's merge button. Merge only with the commands above.
 - After every finished task, post the summary message in the group chat (template in the implementation plan, section 7.2).
 
-## 6. Using Claude Code safely
+## 6. Using an AI assistant safely
 
-1. Keep your own local `CLAUDE.md` with the project rules from this guide (it is git-ignored and never committed). Start each prompt by telling the AI to read it and `docs/team_setup.md`.
+1. Keep your own local rules file with the project rules from this guide. It stays on your machine only: list it in your local `.git/info/exclude` and never commit it. Start each prompt by telling the AI to read it and `docs/team_setup.md`.
 2. One task per session. Always ask for a plan first and approve it before it writes code.
 3. Tell it exactly which files and packages it may touch. Tell it NOT to edit anyone else's files or `db/01_schema.sql`.
 4. Ask it to write tests and run `mvn test`.
