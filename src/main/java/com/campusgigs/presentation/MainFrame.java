@@ -44,6 +44,7 @@ public class MainFrame extends JFrame {
     private final JPanel content = new JPanel(cards);
     private final Map<String, JPanel> cardsByName = new HashMap<>();
     private final Map<Role, List<NavigationItem>> navigation = new EnumMap<>(Role.class);
+    private final Map<Role, List<Supplier<JPanel>>> homeWidgets = new EnumMap<>(Role.class);
 
     public MainFrame() {
         super(UiConstants.APP_TITLE);
@@ -101,6 +102,22 @@ public class MainFrame extends JFrame {
     public void addNavigationItem(Role role, String label, Supplier<JPanel> screen) {
         Objects.requireNonNull(role, "role");
         navigation.computeIfAbsent(role, r -> new ArrayList<>()).add(new NavigationItem(label, screen));
+    }
+
+    /**
+     * Adds a small panel (for example summary cards) to the home screen of every dashboard of the role.
+     *
+     * @param widget creates the panel; called once per login, when the dashboard is built
+     */
+    public void addHomeWidget(Role role, Supplier<JPanel> widget) {
+        Objects.requireNonNull(role, "role");
+        Objects.requireNonNull(widget, "widget");
+        homeWidgets.computeIfAbsent(role, r -> new ArrayList<>()).add(widget);
+    }
+
+    /** The home widgets for a role, in the order they were added. */
+    public List<Supplier<JPanel>> getHomeWidgets(Role role) {
+        return List.copyOf(homeWidgets.getOrDefault(role, List.of()));
     }
 
     /** The navigation items for a role, in the order they were added. */
