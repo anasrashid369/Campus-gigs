@@ -2,10 +2,12 @@ package com.campusgigs.service.impl;
 
 import com.campusgigs.dao.TransactionDao;
 import com.campusgigs.dao.TransactionManager;
+import com.campusgigs.dao.UserDao;
 import com.campusgigs.dao.WalletDao;
 import com.campusgigs.dto.WalletDto;
 import com.campusgigs.exception.ResourceNotFoundException;
 import com.campusgigs.exception.ValidationException;
+import com.campusgigs.model.Role;
 import com.campusgigs.model.TransactionType;
 import com.campusgigs.model.Wallet;
 import com.campusgigs.payment.PaymentGateway;
@@ -23,10 +25,12 @@ public class WalletServiceImpl implements WalletService {
     private final PaymentGateway paymentGateway;
     private final TransactionManager transactions;
     private final EventBus eventBus;
+    private final UserDao userDao;
 
     public WalletServiceImpl(WalletDao walletDao, TransactionDao transactionDao,
                              PaymentGateway paymentGateway, TransactionManager transactions,
-                             EventBus eventBus) {
+                             EventBus eventBus, UserDao userDao) {
+        this.userDao = userDao;
         this.walletDao = walletDao;
         this.transactionDao = transactionDao;
         this.paymentGateway = paymentGateway;
@@ -64,6 +68,7 @@ public class WalletServiceImpl implements WalletService {
             throw new ValidationException("Top-up must be between " + MIN_TOP_UP
                     + " and " + MAX_TOP_UP + " tokens");
         }
+        requireClient(userId);
         walletDao.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"));
 
@@ -82,6 +87,16 @@ public class WalletServiceImpl implements WalletService {
         });
         eventBus.publish(new WalletToppedUp(userId, amount));
         return updated;
+    }
+
+    /** Only client accounts may top up (F20); freelancers earn tokens and admins hold none. */
+    private void requireClient(long userId) {
+        Role role = userDao.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"))
+                .role();
+        if (role != Role.CLIENT) {
+            throw new ValidationException("Only clients can top up a wallet");
+        }
     }
 
     private static WalletDto toDto(Wallet wallet) {
