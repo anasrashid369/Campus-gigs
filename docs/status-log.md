@@ -35,3 +35,4 @@ Format: date - member - phase - task - branch - result.
 - 2026-11-24 - Huzaifa - Docs - Removed assistant-tool references from tracked files; assistant files are excluded locally through .git/info/exclude instead of .gitignore - `feature/huzaifa-repo-hygiene` - Done.
 - 2026-11-24 - Huzaifa - Docs - Commented the example connection settings in `config/config.example.properties`.
 - 2026-11-24 - Abdullah - Phase 3 - F14, F15 gig backend: `GigService` (create, edit, cancel, get, list), `GigRequest`, new `GigDao` queries (insert, update, list by client / freelancer / status, gig skills) - `feature/abdullah-gig-service` - Done, 373 tests passing.
+- 2026-11-24 - Abdullah - Phase 3 - client screens: "Post a Gig" / change gig form (F14, F15), "My Gigs" table with Edit and Cancel, `StatusFormat`; `Main` wires `GigService` - `feature/abdullah-client-gig-screens` - Done, 385 tests passing.
