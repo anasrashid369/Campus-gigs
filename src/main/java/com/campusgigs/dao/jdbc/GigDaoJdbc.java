@@ -7,6 +7,7 @@ import com.campusgigs.model.GigStatus;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.Optional;
 
 /** JDBC implementation of {@link GigDao}. */
@@ -52,6 +53,29 @@ public class GigDaoJdbc extends BaseJdbcDao implements GigDao {
                 ps.setLong(3, gigId);
                 ps.executeUpdate();
                 return null;
+            }
+        });
+    }
+
+    @Override
+    public long sumBudgetByFreelancerAndStatuses(long freelancerId, Collection<GigStatus> statuses) {
+        if (statuses.isEmpty()) {
+            return 0;
+        }
+        String placeholders = String.join(", ", java.util.Collections.nCopies(statuses.size(), "?"));
+        return withConnection(connection -> {
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "SELECT COALESCE(SUM(budget), 0) FROM Gigs WHERE assigned_freelancer_id = ? "
+                            + "AND status IN (" + placeholders + ")")) {
+                ps.setLong(1, freelancerId);
+                int index = 2;
+                for (GigStatus status : statuses) {
+                    ps.setString(index++, status.name());
+                }
+                try (ResultSet rs = ps.executeQuery()) {
+                    rs.next();
+                    return rs.getLong(1);
+                }
             }
         });
     }
