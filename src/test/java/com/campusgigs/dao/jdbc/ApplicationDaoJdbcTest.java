@@ -123,4 +123,16 @@ class ApplicationDaoJdbcTest {
         assertEquals(ApplicationStatus.ACCEPTED, applications.findById(accepted).orElseThrow().status());
         assertEquals(ApplicationStatus.REJECTED, applications.findById(other).orElseThrow().status());
     }
+
+    @Test
+    void findAllCanFilterByStatus() {
+        long pending = applications.insert(gigId, firstFreelancerId, "Pending one");
+        long rejected = applications.insert(gigId, secondFreelancerId, "Rejected one");
+        applications.updateStatus(rejected, ApplicationStatus.REJECTED);
+
+        assertTrue(applications.findAll(null).stream().anyMatch(a -> a.applicationId() == pending));
+        assertTrue(applications.findAll(ApplicationStatus.PENDING).stream().anyMatch(a -> a.applicationId() == pending));
+        assertTrue(applications.findAll(ApplicationStatus.PENDING).stream().noneMatch(a -> a.applicationId() == rejected));
+        assertTrue(applications.findAll(ApplicationStatus.REJECTED).stream().anyMatch(a -> a.applicationId() == rejected));
+    }
 }
