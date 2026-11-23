@@ -13,8 +13,13 @@ import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /** JDBC implementation of {@link GigDao}. */
 public class GigDaoJdbc extends BaseJdbcDao implements GigDao {
@@ -69,7 +74,7 @@ public class GigDaoJdbc extends BaseJdbcDao implements GigDao {
         if (statuses.isEmpty()) {
             return 0;
         }
-        String placeholders = String.join(", ", java.util.Collections.nCopies(statuses.size(), "?"));
+        String placeholders = String.join(", ", Collections.nCopies(statuses.size(), "?"));
         return withConnection(connection -> {
             try (PreparedStatement ps = connection.prepareStatement(
                     "SELECT COALESCE(SUM(budget), 0) FROM Gigs WHERE assigned_freelancer_id = ? "
@@ -181,6 +186,71 @@ public class GigDaoJdbc extends BaseJdbcDao implements GigDao {
                 }
             }
         });
+    }
+
+    @Override
+    public List<Gig> searchOpen(String keyword, Long categoryId, Long minBudget, Long maxBudget) {
+        StringBuilder condition = new StringBuilder("status = 'OPEN'");
+        List<Object> values = new ArrayList<>();
+        if (keyword != null && !keyword.isBlank()) {
+            condition.append(" AND (title LIKE ? ESCAPE '\\\\' OR description LIKE ? ESCAPE '\\\\')");
+            String pattern = "%" + escapeLike(keyword.trim()) + "%";
+            values.add(pattern);
+            values.add(pattern);
+        }
+        if (categoryId != null) {
+            condition.append(" AND category_id = ?");
+            values.add(categoryId);
+        }
+        if (minBudget != null) {
+            condition.append(" AND budget >= ?");
+            values.add(minBudget);
+        }
+        if (maxBudget != null) {
+            condition.append(" AND budget <= ?");
+            values.add(maxBudget);
+        }
+        return findMany(condition.toString(), ps -> {
+            for (int i = 0; i < values.size(); i++) {
+                ps.setObject(i + 1, values.get(i));
+            }
+        });
+    }
+
+    @Override
+    public Map<Long, Set<Long>> findSkillIdsByGigIds(Collection<Long> gigIds) {
+        if (gigIds.isEmpty()) {
+            return Map.of();
+        }
+        String placeholders = String.join(", ", Collections.nCopies(gigIds.size(), "?"));
+        return withConnection(connection -> {
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "SELECT gig_id, skill_id FROM GigSkills WHERE gig_id IN (" + placeholders + ")")) {
+                int index = 1;
+                for (long gigId : gigIds) {
+                    ps.setLong(index++, gigId);
+                }
+                try (ResultSet rs = ps.executeQuery()) {
+                    Map<Long, Set<Long>> result = new HashMap<>();
+                    while (rs.next()) {
+                        result.computeIfAbsent(rs.getLong("gig_id"), id -> new HashSet<>()).add(rs.getLong("skill_id"));
+                    }
+                    return result;
+                }
+            }
+        });
+    }
+
+    @Override
+    public List<Gig> findAll(GigStatus statusOrNull) {
+        return statusOrNull == null
+                ? findMany("1 = 1", ps -> { })
+                : findByStatus(statusOrNull);
+    }
+
+    /** Makes a search word match literally: % and _ lose their wildcard meaning. */
+    private static String escapeLike(String text) {
+        return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     /** Parameter setter that may throw {@link SQLException}. */
