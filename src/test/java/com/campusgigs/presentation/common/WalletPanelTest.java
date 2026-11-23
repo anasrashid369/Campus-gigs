@@ -47,7 +47,7 @@ class WalletPanelTest {
 
     /** Builds the panel and waits until its first background load has finished, so stubbing is safe. */
     private WalletPanel openPanel() {
-        WalletPanel panel = new WalletPanel(walletService, transactionService, true);
+        WalletPanel panel = new WalletPanel(walletService, transactionService);
         verify(walletService, timeout(3000)).getWallet(USER_ID);
         verify(transactionService, timeout(3000)).getHistory(USER_ID);
         return panel;
