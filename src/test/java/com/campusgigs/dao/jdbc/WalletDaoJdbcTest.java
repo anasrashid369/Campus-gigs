@@ -112,4 +112,18 @@ class WalletDaoJdbcTest {
         assertEquals(150, wallets.findByUserId(userId).orElseThrow().availableBalance());
         assertEquals(1, ledger.findByWalletId(w.walletId()).size());
     }
+
+    @Test
+    void sumsLedgerEntriesByType() {
+        Wallet w = wallets.create(userId, 0);
+
+        assertEquals(0, ledger.sumByType(w.walletId(), TransactionType.TOPUP));
+        ledger.insert(w.walletId(), null, TransactionType.TOPUP, 5, "a");
+        ledger.insert(w.walletId(), null, TransactionType.TOPUP, 7, "b");
+        ledger.insert(w.walletId(), null, TransactionType.WITHDRAWAL, 2, "c");
+
+        assertEquals(12, ledger.sumByType(w.walletId(), TransactionType.TOPUP));
+        assertEquals(2, ledger.sumByType(w.walletId(), TransactionType.WITHDRAWAL));
+        assertEquals(0, ledger.sumByType(w.walletId(), TransactionType.PLATFORM_FEE));
+    }
 }

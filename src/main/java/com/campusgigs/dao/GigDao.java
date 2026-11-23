@@ -3,6 +3,7 @@ package com.campusgigs.dao;
 import com.campusgigs.model.Gig;
 import com.campusgigs.model.GigStatus;
 
+import java.util.Collection;
 import java.util.Optional;
 
 /**
@@ -26,4 +27,7 @@ public interface GigDao {
 
     /** Records the hired freelancer and sets the new status in one update. */
     void assign(long gigId, long freelancerId, GigStatus status);
+
+    /** Adds up the budgets of the freelancer's gigs that are in any of the given statuses; 0 if there are none. */
+    long sumBudgetByFreelancerAndStatuses(long freelancerId, Collection<GigStatus> statuses);
 }

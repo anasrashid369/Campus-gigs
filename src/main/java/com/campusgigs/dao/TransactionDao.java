@@ -17,4 +17,7 @@ public interface TransactionDao {
 
     /** Returns the wallet's ledger entries, newest first. */
     List<Transaction> findByWalletId(long walletId);
+
+    /** Returns the total amount of the wallet's ledger entries of one type, or 0 if there are none. */
+    long sumByType(long walletId, TransactionType type);
 }

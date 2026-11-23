@@ -82,4 +82,16 @@ class GigDaoJdbcTest {
     void databaseRefusesAnAssignedStatusWithoutAFreelancer() {
         assertThrows(DataAccessException.class, () -> gigs.updateStatus(gigId, GigStatus.ASSIGNED));
     }
+
+    @Test
+    void sumsTheBudgetsOfAFreelancersGigsByStatus() {
+        assertEquals(0, gigs.sumBudgetByFreelancerAndStatuses(freelancerId, java.util.EnumSet.allOf(GigStatus.class)));
+        assertEquals(0, gigs.sumBudgetByFreelancerAndStatuses(freelancerId, java.util.Set.of()));
+        gigs.assign(gigId, freelancerId, GigStatus.ASSIGNED);
+
+        assertEquals(300, gigs.sumBudgetByFreelancerAndStatuses(freelancerId,
+                java.util.EnumSet.of(GigStatus.ASSIGNED, GigStatus.SUBMITTED)));
+        assertEquals(0, gigs.sumBudgetByFreelancerAndStatuses(freelancerId, java.util.EnumSet.of(GigStatus.APPROVED)));
+        assertEquals(0, gigs.sumBudgetByFreelancerAndStatuses(clientId, java.util.EnumSet.of(GigStatus.ASSIGNED)));
+    }
 }
