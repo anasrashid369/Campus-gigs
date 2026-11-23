@@ -5,9 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.campusgigs.exception.DataAccessException;
+import com.campusgigs.dao.TransactionDao;
 import com.campusgigs.model.Transaction;
 import com.campusgigs.model.TransactionType;
 import com.campusgigs.model.Wallet;
+import com.campusgigs.model.LedgerEntry;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -125,5 +128,26 @@ class WalletDaoJdbcTest {
         assertEquals(12, ledger.sumByType(w.walletId(), TransactionType.TOPUP));
         assertEquals(2, ledger.sumByType(w.walletId(), TransactionType.WITHDRAWAL));
         assertEquals(0, ledger.sumByType(w.walletId(), TransactionType.PLATFORM_FEE));
+    }
+
+    @Test
+    void ledgerQueryShowsOwnerNamesAndFiltersByTypeAndDay() {
+        Wallet w = wallets.create(userId, 0);
+        Transaction topUp = ledger.insert(w.walletId(), null, TransactionType.TOPUP, 40, "ledger-test");
+        Transaction fee = ledger.insert(w.walletId(), null, TransactionType.PLATFORM_FEE, 3, "ledger-test");
+        LocalDate today = LocalDate.now();
+
+        List<LedgerEntry> all = ledger.findLedger(null, today, today);
+        List<LedgerEntry> onlyFees = ledger.findLedger(TransactionType.PLATFORM_FEE, today, today);
+        List<LedgerEntry> yesterday = ledger.findLedger(null, today.minusDays(5), today.minusDays(1));
+
+        LedgerEntry found = all.stream().filter(e -> e.transactionId() == topUp.transactionId()).findFirst().orElseThrow();
+        assertEquals("Test", found.userName());
+        assertEquals(userId, found.userId());
+        assertEquals(40, found.amount());
+        assertTrue(onlyFees.stream().anyMatch(e -> e.transactionId() == fee.transactionId()));
+        assertTrue(onlyFees.stream().noneMatch(e -> e.transactionId() == topUp.transactionId()));
+        assertTrue(yesterday.stream().noneMatch(e -> e.transactionId() == topUp.transactionId()));
+        assertTrue(all.size() <= TransactionDao.MAX_LEDGER_ROWS);
     }
 }
