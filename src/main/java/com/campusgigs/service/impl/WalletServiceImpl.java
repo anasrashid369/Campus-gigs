@@ -89,6 +89,32 @@ public class WalletServiceImpl implements WalletService {
         return updated;
     }
 
+    @Override
+    public WalletDto withdraw(long userId, long amount) {
+        if (amount < MIN_WITHDRAWAL) {
+            throw new ValidationException("The withdrawal must be at least " + MIN_WITHDRAWAL + " token");
+        }
+        Role role = userDao.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"))
+                .role();
+        if (role != Role.FREELANCER) {
+            throw new ValidationException("Only freelancers can withdraw tokens");
+        }
+        return transactions.call(() -> {
+            Wallet wallet = walletDao.findByUserIdForUpdate(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"));
+            if (wallet.availableBalance() < amount) {
+                throw new ValidationException("Not enough tokens: " + wallet.availableBalance()
+                        + " available, " + amount + " requested");
+            }
+            long remaining = wallet.availableBalance() - amount;
+            walletDao.updateBalances(wallet.walletId(), remaining, wallet.escrowBalance());
+            transactionDao.insert(wallet.walletId(), null, TransactionType.WITHDRAWAL, amount,
+                    "Simulated withdrawal");
+            return new WalletDto(wallet.walletId(), userId, remaining, wallet.escrowBalance());
+        });
+    }
+
     /** Only client accounts may top up (F20); freelancers earn tokens and admins hold none. */
     private void requireClient(long userId) {
         Role role = userDao.findById(userId)
