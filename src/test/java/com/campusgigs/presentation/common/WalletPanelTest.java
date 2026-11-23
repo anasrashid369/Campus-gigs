@@ -45,17 +45,22 @@ class WalletPanelTest {
         SessionManager.getInstance().clear();
     }
 
-    @Test
-    void loadsTheWalletAndHistoryOfTheLoggedInUser() {
-        new WalletPanel(walletService, transactionService, true);
-
+    /** Builds the panel and waits until its first background load has finished, so stubbing is safe. */
+    private WalletPanel openPanel() {
+        WalletPanel panel = new WalletPanel(walletService, transactionService, true);
         verify(walletService, timeout(3000)).getWallet(USER_ID);
         verify(transactionService, timeout(3000)).getHistory(USER_ID);
+        return panel;
+    }
+
+    @Test
+    void loadsTheWalletAndHistoryOfTheLoggedInUser() {
+        openPanel();
     }
 
     @Test
     void topUpCallsTheServiceWithTheTypedAmount() {
-        WalletPanel panel = new WalletPanel(walletService, transactionService, true);
+        WalletPanel panel = openPanel();
         when(walletService.topUp(USER_ID, 250)).thenReturn(new WalletDto(1, USER_ID, 350, 0));
 
         panel.submitTopUp(" 250 ");
@@ -65,7 +70,7 @@ class WalletPanelTest {
 
     @Test
     void anAmountThatIsNotANumberNeverReachesTheService() {
-        WalletPanel panel = new WalletPanel(walletService, transactionService, true);
+        WalletPanel panel = openPanel();
 
         panel.submitTopUp("abc");
         panel.submitTopUp("");
@@ -76,7 +81,7 @@ class WalletPanelTest {
 
     @Test
     void aRejectedTopUpIsHandledWithoutCrashing() {
-        WalletPanel panel = new WalletPanel(walletService, transactionService, true);
+        WalletPanel panel = openPanel();
         when(walletService.topUp(USER_ID, 99_999)).thenThrow(new ValidationException("Top-up must be between 1 and 10000 tokens"));
 
         panel.submitTopUp("99999");
