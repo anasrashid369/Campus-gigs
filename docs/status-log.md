@@ -17,3 +17,6 @@ Format: date - member - phase - task - branch - result.
 
 - 2026-11-22 - Anas - Phase 2 - B2 SettingsService interface (merged first so Abdullah can start A3) - `feature/anas-settings-interface` - Done.
 - 2026-11-22 - Anas - Phase 2 - B2 SettingsDao, SettingsDaoJdbc, SettingsServiceImpl (defaults, admin-only update, range checks) - `feature/anas-settings-service` - Done, 24 service tests passing, 3 DAO tests need MySQL. Admin check switches to Abdullah's `UserDao.findById` when A3 lands.
+- 2026-11-23 - Anas (covering for Abdullah, who is ill) - Phase 2 - A3 UserDao, AuthService (register/login), UserService, SessionManager - `feature/abdullah-auth-service` - Done, 27 unit tests passing, 3 DAO tests need MySQL. Abdullah to review when back.
+- 2026-11-23 - Anas - Phase 2 - B2 follow-up: SettingsService admin check now uses `UserDao.findById` - `feature/anas-settings-admin-check` - Done.
+- 2026-11-23 - Anas (covering for Abdullah, who is ill) - Phase 2 - A4 Login/register screens, role dashboards via DashboardFactory, navigation list in MainFrame, profile screen (F1 UI, F2, F3) - `feature/abdullah-dashboards` - Done, factory and MainFrame tests passing; screens checked by rendering them. Needs MySQL for the end-to-end check.
