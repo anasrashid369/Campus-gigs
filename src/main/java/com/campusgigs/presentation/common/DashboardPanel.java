@@ -14,11 +14,11 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.GridBagLayout;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * Layout shared by the three role dashboards: a bar with the user's name, role and a
@@ -44,7 +44,7 @@ public abstract class DashboardPanel extends JPanel {
         add(createUserBar(frame), BorderLayout.NORTH);
         add(createNavigation(frame.getNavigationItems(user.role())), BorderLayout.WEST);
         screenArea.setBackground(UiConstants.BACKGROUND);
-        screenArea.add(createWelcome(user, welcomeText), HOME);
+        screenArea.add(createWelcome(user, welcomeText, frame.getHomeWidgets(user.role())), HOME);
         add(screenArea, BorderLayout.CENTER);
         showUser(user);
     }
@@ -105,22 +105,34 @@ public abstract class DashboardPanel extends JPanel {
         screens.show(screenArea, key);
     }
 
-    private static JPanel createWelcome(UserDto user, String welcomeText) {
-        JPanel welcome = new JPanel(new GridBagLayout());
+    private static JPanel createWelcome(UserDto user, String welcomeText, List<Supplier<JPanel>> widgets) {
+        JPanel welcome = new JPanel(new BorderLayout(0, UiConstants.SPACING_XLARGE));
         welcome.setBackground(UiConstants.BACKGROUND);
+        welcome.setBorder(BorderFactory.createEmptyBorder(UiConstants.SPACING_XLARGE, UiConstants.SPACING_XLARGE,
+                UiConstants.SPACING_XLARGE, UiConstants.SPACING_XLARGE));
         JPanel text = new JPanel();
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
         text.setOpaque(false);
         JLabel hello = new JLabel("Welcome, " + user.fullName());
         hello.setFont(UiConstants.TITLE_FONT);
         hello.setForeground(UiConstants.PRIMARY);
+        hello.setAlignmentX(Component.LEFT_ALIGNMENT);
         JLabel hint = new JLabel(welcomeText);
         hint.setFont(UiConstants.BODY_FONT);
         hint.setForeground(UiConstants.MUTED_TEXT);
+        hint.setAlignmentX(Component.LEFT_ALIGNMENT);
         text.add(hello);
         text.add(Box.createVerticalStrut(UiConstants.SPACING_MEDIUM));
         text.add(hint);
-        welcome.add(text);
+        welcome.add(text, BorderLayout.NORTH);
+
+        JPanel summary = new JPanel();
+        summary.setLayout(new BoxLayout(summary, BoxLayout.Y_AXIS));
+        summary.setOpaque(false);
+        for (Supplier<JPanel> widget : widgets) {
+            summary.add(widget.get());
+        }
+        welcome.add(summary, BorderLayout.CENTER);
         return welcome;
     }
 

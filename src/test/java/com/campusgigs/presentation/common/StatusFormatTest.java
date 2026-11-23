@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.campusgigs.dto.GigDto;
+import com.campusgigs.model.ApplicationStatus;
 import com.campusgigs.model.GigStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -43,5 +44,14 @@ class StatusFormatTest {
                 assertFalse(StatusFormat.isOverdue(gig(status, TODAY.minusDays(30)), TODAY), status.name());
             }
         }
+    }
+
+    @Test
+    void everyApplicationStatusHasAReadableName() {
+        for (ApplicationStatus status : ApplicationStatus.values()) {
+            assertFalse(StatusFormat.applicationStatus(status).isBlank());
+        }
+        assertEquals("Pending", StatusFormat.applicationStatus(ApplicationStatus.PENDING));
+        assertEquals("Not chosen", StatusFormat.applicationStatus(ApplicationStatus.REJECTED));
     }
 }

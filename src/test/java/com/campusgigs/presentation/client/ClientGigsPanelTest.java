@@ -10,6 +10,8 @@ import com.campusgigs.dto.UserDto;
 import com.campusgigs.model.AccountStatus;
 import com.campusgigs.model.GigStatus;
 import com.campusgigs.model.Role;
+import com.campusgigs.service.ApplicationService;
+import com.campusgigs.service.GigLifecycleService;
 import com.campusgigs.service.GigService;
 import com.campusgigs.service.ProfileService;
 import com.campusgigs.util.SessionManager;
@@ -27,6 +29,8 @@ class ClientGigsPanelTest {
 
     @Mock GigService gigService;
     @Mock ProfileService profileService;
+    @Mock ApplicationService applicationService;
+    @Mock GigLifecycleService lifecycleService;
 
     @AfterEach
     void logOut() {
@@ -56,7 +60,7 @@ class ClientGigsPanelTest {
                 new UserDto(1, Role.CLIENT, "Client", "c@example.com", AccountStatus.ACTIVE));
         lenient().when(gigService.listClientGigs(1)).thenReturn(List.of(gig(GigStatus.OPEN, null)));
 
-        new ClientGigsPanel(gigService, profileService);
+        new ClientGigsPanel(gigService, profileService, applicationService, lifecycleService);
 
         verify(gigService, timeout(3000)).listClientGigs(1);
     }
