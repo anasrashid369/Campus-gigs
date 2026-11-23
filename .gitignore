@@ -7,3 +7,10 @@ target/
 .settings/
 *.log
 config/config.properties
+
+# AI assistant and personal working files (keep local, never commit)
+CLAUDE.md
+.claude/
+workflow.md
+decision.md
+docs/prompts_*.md
