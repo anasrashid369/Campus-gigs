@@ -226,6 +226,58 @@ class WalletServiceImplTest {
         verifyNoInteractions(walletDao, gateway);
     }
 
+    @Test
+    void freelancerWithdrawalReducesBalanceAndWritesLedger() {
+        when(userDao.findById(2)).thenReturn(Optional.of(user(Role.FREELANCER)));
+        when(walletDao.findByUserIdForUpdate(2)).thenReturn(Optional.of(new Wallet(8, 2, 300, 40, 0)));
+
+        WalletDto result = service.withdraw(2, 120);
+
+        assertEquals(180, result.availableBalance());
+        assertEquals(40, result.escrowBalance());
+        verify(walletDao).updateBalances(8, 180, 40);
+        verify(transactionDao).insert(8, null, TransactionType.WITHDRAWAL, 120, "Simulated withdrawal");
+        verifyNoInteractions(gateway);
+    }
+
+    @Test
+    void withdrawalCanTakeTheWholeAvailableBalance() {
+        when(userDao.findById(2)).thenReturn(Optional.of(user(Role.FREELANCER)));
+        when(walletDao.findByUserIdForUpdate(2)).thenReturn(Optional.of(new Wallet(8, 2, 300, 0, 0)));
+
+        assertEquals(0, service.withdraw(2, 300).availableBalance());
+    }
+
+    @Test
+    void withdrawalAboveTheAvailableBalanceChangesNothing() {
+        when(userDao.findById(2)).thenReturn(Optional.of(user(Role.FREELANCER)));
+        when(walletDao.findByUserIdForUpdate(2)).thenReturn(Optional.of(new Wallet(8, 2, 300, 500, 0)));
+
+        assertThrows(ValidationException.class, () -> service.withdraw(2, 301));
+
+        verify(walletDao, never()).updateBalances(anyLong(), anyLong(), anyLong());
+        verifyNoInteractions(transactionDao);
+    }
+
+    @Test
+    void onlyFreelancersMayWithdraw() {
+        when(userDao.findById(1)).thenReturn(Optional.of(user(Role.CLIENT)));
+        when(userDao.findById(3)).thenReturn(Optional.of(user(Role.ADMIN)));
+
+        assertThrows(ValidationException.class, () -> service.withdraw(1, 10));
+        assertThrows(ValidationException.class, () -> service.withdraw(3, 10));
+
+        verifyNoInteractions(walletDao, transactionDao);
+    }
+
+    @Test
+    void withdrawalRejectsZeroNegativeAndUnknownUser() {
+        assertThrows(ValidationException.class, () -> service.withdraw(2, 0));
+        assertThrows(ValidationException.class, () -> service.withdraw(2, -1));
+        when(userDao.findById(9)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> service.withdraw(9, 10));
+    }
+
     private static User user(Role role) {
         return new User(1, role, "Test User", "test@example.com", "hash", AccountStatus.ACTIVE,
                 LocalDateTime.now());
