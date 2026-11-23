@@ -4,6 +4,7 @@ import com.campusgigs.dto.DisputeDto;
 import com.campusgigs.model.DisputeDecision;
 import com.campusgigs.model.DisputeStatus;
 import com.campusgigs.presentation.common.TablePanel;
+import com.campusgigs.presentation.common.TextFormat;
 import com.campusgigs.presentation.common.TokenFormat;
 import com.campusgigs.service.DisputeService;
 import com.campusgigs.util.SessionManager;
@@ -59,8 +60,7 @@ public class DisputesPanel extends TablePanel<DisputeDto> {
 
     /** Cuts a long reason to one table line, adding an ellipsis. */
     static String shorten(String reason) {
-        String oneLine = reason.replaceAll("\\s+", " ").trim();
-        return oneLine.length() <= MAX_REASON_CHARS ? oneLine : oneLine.substring(0, MAX_REASON_CHARS - 1) + "…";
+        return TextFormat.oneLine(reason, MAX_REASON_CHARS);
     }
 
     @Override
