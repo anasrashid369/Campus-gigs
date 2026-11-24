@@ -109,4 +109,25 @@ class MainFrameTest {
         }
         return null;
     }
+
+    @Test
+    void keepsHomeWidgetsPerRoleInTheOrderTheyWereAdded() {
+        JPanel first = new JPanel();
+        JPanel second = new JPanel();
+        frame.addHomeWidget(Role.CLIENT, () -> first);
+        frame.addHomeWidget(Role.CLIENT, () -> second);
+        frame.addHomeWidget(Role.ADMIN, JPanel::new);
+
+        assertEquals(2, frame.getHomeWidgets(Role.CLIENT).size());
+        assertEquals(first, frame.getHomeWidgets(Role.CLIENT).get(0).get());
+        assertEquals(second, frame.getHomeWidgets(Role.CLIENT).get(1).get());
+        assertEquals(1, frame.getHomeWidgets(Role.ADMIN).size());
+        assertTrue(frame.getHomeWidgets(Role.FREELANCER).isEmpty());
+    }
+
+    @Test
+    void rejectsMissingHomeWidgetArguments() {
+        assertThrows(NullPointerException.class, () -> frame.addHomeWidget(null, JPanel::new));
+        assertThrows(NullPointerException.class, () -> frame.addHomeWidget(Role.CLIENT, null));
+    }
 }

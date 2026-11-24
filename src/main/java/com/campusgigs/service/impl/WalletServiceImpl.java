@@ -2,15 +2,19 @@ package com.campusgigs.service.impl;
 
 import com.campusgigs.dao.TransactionDao;
 import com.campusgigs.dao.TransactionManager;
+import com.campusgigs.dao.UserDao;
 import com.campusgigs.dao.WalletDao;
 import com.campusgigs.dto.WalletDto;
 import com.campusgigs.exception.ResourceNotFoundException;
 import com.campusgigs.exception.ValidationException;
+import com.campusgigs.model.Role;
 import com.campusgigs.model.TransactionType;
 import com.campusgigs.model.Wallet;
 import com.campusgigs.payment.PaymentGateway;
 import com.campusgigs.payment.PaymentRequest;
 import com.campusgigs.payment.PaymentResult;
+import com.campusgigs.pattern.observer.EventBus;
+import com.campusgigs.pattern.observer.WalletToppedUp;
 import com.campusgigs.service.WalletService;
 
 /** Default {@link WalletService}. */
@@ -20,13 +24,18 @@ public class WalletServiceImpl implements WalletService {
     private final TransactionDao transactionDao;
     private final PaymentGateway paymentGateway;
     private final TransactionManager transactions;
+    private final EventBus eventBus;
+    private final UserDao userDao;
 
     public WalletServiceImpl(WalletDao walletDao, TransactionDao transactionDao,
-                             PaymentGateway paymentGateway, TransactionManager transactions) {
+                             PaymentGateway paymentGateway, TransactionManager transactions,
+                             EventBus eventBus, UserDao userDao) {
+        this.userDao = userDao;
         this.walletDao = walletDao;
         this.transactionDao = transactionDao;
         this.paymentGateway = paymentGateway;
         this.transactions = transactions;
+        this.eventBus = eventBus;
     }
 
     @Override
@@ -59,6 +68,7 @@ public class WalletServiceImpl implements WalletService {
             throw new ValidationException("Top-up must be between " + MIN_TOP_UP
                     + " and " + MAX_TOP_UP + " tokens");
         }
+        requireClient(userId);
         walletDao.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"));
 
@@ -67,7 +77,7 @@ public class WalletServiceImpl implements WalletService {
             throw new ValidationException("Payment was declined: " + payment.message());
         }
 
-        return transactions.call(() -> {
+        WalletDto updated = transactions.call(() -> {
             Wallet wallet = walletDao.findByUserIdForUpdate(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"));
             long newAvailable = Math.addExact(wallet.availableBalance(), amount);
@@ -75,6 +85,44 @@ public class WalletServiceImpl implements WalletService {
             transactionDao.insert(wallet.walletId(), null, TransactionType.TOPUP, amount, payment.reference());
             return new WalletDto(wallet.walletId(), userId, newAvailable, wallet.escrowBalance());
         });
+        eventBus.publish(new WalletToppedUp(userId, amount));
+        return updated;
+    }
+
+    @Override
+    public WalletDto withdraw(long userId, long amount) {
+        if (amount < MIN_WITHDRAWAL) {
+            throw new ValidationException("The withdrawal must be at least " + MIN_WITHDRAWAL + " token");
+        }
+        Role role = userDao.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"))
+                .role();
+        if (role != Role.FREELANCER) {
+            throw new ValidationException("Only freelancers can withdraw tokens");
+        }
+        return transactions.call(() -> {
+            Wallet wallet = walletDao.findByUserIdForUpdate(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"));
+            if (wallet.availableBalance() < amount) {
+                throw new ValidationException("Not enough tokens: " + wallet.availableBalance()
+                        + " available, " + amount + " requested");
+            }
+            long remaining = wallet.availableBalance() - amount;
+            walletDao.updateBalances(wallet.walletId(), remaining, wallet.escrowBalance());
+            transactionDao.insert(wallet.walletId(), null, TransactionType.WITHDRAWAL, amount,
+                    "Simulated withdrawal");
+            return new WalletDto(wallet.walletId(), userId, remaining, wallet.escrowBalance());
+        });
+    }
+
+    /** Only client accounts may top up (F20); freelancers earn tokens and admins hold none. */
+    private void requireClient(long userId) {
+        Role role = userDao.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"))
+                .role();
+        if (role != Role.CLIENT) {
+            throw new ValidationException("Only clients can top up a wallet");
+        }
     }
 
     private static WalletDto toDto(Wallet wallet) {

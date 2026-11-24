@@ -11,6 +11,9 @@ public interface WalletService {
     /** Largest allowed single top-up, in tokens. */
     long MAX_TOP_UP = 10_000;
 
+    /** Smallest allowed single withdrawal, in tokens. */
+    long MIN_WITHDRAWAL = 1;
+
     /**
      * Creates the user's wallet (called at registration). A positive initial balance
      * is recorded in the ledger as a TOPUP entry so ledger totals match balances.
@@ -27,10 +30,21 @@ public interface WalletService {
     WalletDto getWallet(long userId);
 
     /**
-     * Adds tokens through the payment gateway.
+     * Adds tokens through the payment gateway and, after the transaction commits,
+     * publishes a {@code WalletToppedUp} event.
      *
-     * @throws com.campusgigs.exception.ValidationException if the amount is outside the allowed range or the payment is declined
+     * @throws com.campusgigs.exception.ValidationException if the amount is outside the allowed range, the user is not a client, or the payment is declined
      * @throws com.campusgigs.exception.ResourceNotFoundException if the user has no wallet
      */
     WalletDto topUp(long userId, long amount);
+
+    /**
+     * Simulated withdrawal of tokens by a freelancer. Reduces the available balance and
+     * writes a WITHDRAWAL ledger entry in one transaction. No real money moves and the
+     * payment gateway is not used.
+     *
+     * @throws com.campusgigs.exception.ValidationException if the user is not a freelancer, the amount is below the minimum, or it exceeds the available balance
+     * @throws com.campusgigs.exception.ResourceNotFoundException if the user or the wallet does not exist
+     */
+    WalletDto withdraw(long userId, long amount);
 }

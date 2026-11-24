@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -12,15 +13,24 @@ import static org.mockito.Mockito.when;
 
 import com.campusgigs.dao.TransactionDao;
 import com.campusgigs.dao.TransactionManager;
+import com.campusgigs.dao.UserDao;
 import com.campusgigs.dao.WalletDao;
 import com.campusgigs.dto.WalletDto;
 import com.campusgigs.exception.ResourceNotFoundException;
 import com.campusgigs.exception.ValidationException;
+import com.campusgigs.model.AccountStatus;
+import com.campusgigs.model.Role;
 import com.campusgigs.model.TransactionType;
+import com.campusgigs.model.User;
 import com.campusgigs.model.Wallet;
 import com.campusgigs.payment.PaymentGateway;
+import com.campusgigs.pattern.observer.EventBus;
+import com.campusgigs.pattern.observer.WalletToppedUp;
 import com.campusgigs.payment.PaymentResult;
 import com.campusgigs.service.WalletService;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,8 +45,11 @@ class WalletServiceImplTest {
     @Mock WalletDao walletDao;
     @Mock TransactionDao transactionDao;
     @Mock PaymentGateway gateway;
+    @Mock UserDao userDao;
 
     private WalletServiceImpl service;
+    private final EventBus eventBus = new EventBus();
+    private final List<WalletToppedUp> published = new ArrayList<>();
 
     /** Runs the work directly; real commit/rollback is covered by the JDBC tests. */
     private final TransactionManager passThrough = new TransactionManager() {
@@ -53,7 +66,9 @@ class WalletServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new WalletServiceImpl(walletDao, transactionDao, gateway, passThrough);
+        eventBus.subscribe(WalletToppedUp.class, published::add);
+        lenient().when(userDao.findById(1)).thenReturn(Optional.of(user(Role.CLIENT)));
+        service = new WalletServiceImpl(walletDao, transactionDao, gateway, passThrough, eventBus, userDao);
     }
 
     @Test
@@ -154,5 +169,117 @@ class WalletServiceImplTest {
         when(walletDao.findByUserId(1)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service.getWallet(1));
+    }
+
+    @Test
+    void topUpPublishesWalletToppedUpEvent() {
+        Wallet wallet = new Wallet(7, 1, 100, 0, 0);
+        when(walletDao.findByUserId(1)).thenReturn(Optional.of(wallet));
+        when(walletDao.findByUserIdForUpdate(1)).thenReturn(Optional.of(wallet));
+        when(gateway.process(any())).thenReturn(PaymentResult.succeeded("SIM-1"));
+
+        service.topUp(1, 250);
+
+        assertEquals(List.of(new WalletToppedUp(1, 250)), published);
+    }
+
+    @Test
+    void declinedTopUpPublishesNoEvent() {
+        when(walletDao.findByUserId(1)).thenReturn(Optional.of(new Wallet(7, 1, 100, 0, 0)));
+        when(gateway.process(any())).thenReturn(PaymentResult.failed("declined"));
+
+        assertThrows(ValidationException.class, () -> service.topUp(1, 50));
+
+        assertEquals(0, published.size());
+    }
+
+    @Test
+    void failedDatabaseWorkPublishesNoEvent() {
+        Wallet wallet = new Wallet(7, 1, 100, 0, 0);
+        when(walletDao.findByUserId(1)).thenReturn(Optional.of(wallet));
+        when(walletDao.findByUserIdForUpdate(1)).thenReturn(Optional.empty());
+        when(gateway.process(any())).thenReturn(PaymentResult.succeeded("SIM-1"));
+
+        assertThrows(ResourceNotFoundException.class, () -> service.topUp(1, 50));
+
+        assertEquals(0, published.size());
+    }
+
+    @Test
+    void onlyClientsMayTopUp() {
+        when(userDao.findById(2)).thenReturn(Optional.of(user(Role.FREELANCER)));
+        when(userDao.findById(3)).thenReturn(Optional.of(user(Role.ADMIN)));
+
+        assertThrows(ValidationException.class, () -> service.topUp(2, 50));
+        assertThrows(ValidationException.class, () -> service.topUp(3, 50));
+
+        verifyNoInteractions(walletDao, transactionDao, gateway);
+        assertEquals(0, published.size());
+    }
+
+    @Test
+    void topUpForUnknownUserFails() {
+        when(userDao.findById(9)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.topUp(9, 50));
+
+        verifyNoInteractions(walletDao, gateway);
+    }
+
+    @Test
+    void freelancerWithdrawalReducesBalanceAndWritesLedger() {
+        when(userDao.findById(2)).thenReturn(Optional.of(user(Role.FREELANCER)));
+        when(walletDao.findByUserIdForUpdate(2)).thenReturn(Optional.of(new Wallet(8, 2, 300, 40, 0)));
+
+        WalletDto result = service.withdraw(2, 120);
+
+        assertEquals(180, result.availableBalance());
+        assertEquals(40, result.escrowBalance());
+        verify(walletDao).updateBalances(8, 180, 40);
+        verify(transactionDao).insert(8, null, TransactionType.WITHDRAWAL, 120, "Simulated withdrawal");
+        verifyNoInteractions(gateway);
+    }
+
+    @Test
+    void withdrawalCanTakeTheWholeAvailableBalance() {
+        when(userDao.findById(2)).thenReturn(Optional.of(user(Role.FREELANCER)));
+        when(walletDao.findByUserIdForUpdate(2)).thenReturn(Optional.of(new Wallet(8, 2, 300, 0, 0)));
+
+        assertEquals(0, service.withdraw(2, 300).availableBalance());
+    }
+
+    @Test
+    void withdrawalAboveTheAvailableBalanceChangesNothing() {
+        when(userDao.findById(2)).thenReturn(Optional.of(user(Role.FREELANCER)));
+        when(walletDao.findByUserIdForUpdate(2)).thenReturn(Optional.of(new Wallet(8, 2, 300, 500, 0)));
+
+        assertThrows(ValidationException.class, () -> service.withdraw(2, 301));
+
+        verify(walletDao, never()).updateBalances(anyLong(), anyLong(), anyLong());
+        verifyNoInteractions(transactionDao);
+    }
+
+    @Test
+    void onlyFreelancersMayWithdraw() {
+        when(userDao.findById(1)).thenReturn(Optional.of(user(Role.CLIENT)));
+        when(userDao.findById(3)).thenReturn(Optional.of(user(Role.ADMIN)));
+
+        assertThrows(ValidationException.class, () -> service.withdraw(1, 10));
+        assertThrows(ValidationException.class, () -> service.withdraw(3, 10));
+
+        verifyNoInteractions(walletDao, transactionDao);
+    }
+
+    @Test
+    void withdrawalRejectsZeroNegativeAndUnknownUser() {
+        assertThrows(ValidationException.class, () -> service.withdraw(2, 0));
+        assertThrows(ValidationException.class, () -> service.withdraw(2, -1));
+        when(userDao.findById(9)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> service.withdraw(9, 10));
+    }
+
+    private static User user(Role role) {
+        return new User(1, role, "Test User", "test@example.com", "hash", AccountStatus.ACTIVE,
+                LocalDateTime.now());
     }
 }
