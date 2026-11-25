@@ -73,6 +73,13 @@ public abstract class TablePanel<T> extends BasePanel {
         return button;
     }
 
+    /** Sets the preferred column widths in pixels, in column order; extra space is shared out. */
+    protected void setColumnWidths(int... widths) {
+        for (int i = 0; i < widths.length && i < table.getColumnCount(); i++) {
+            table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        }
+    }
+
     /** Replaces the rows; the selection is cleared. */
     protected void setRows(List<T> rows) {
         model.setRows(rows);

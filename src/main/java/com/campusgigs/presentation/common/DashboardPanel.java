@@ -1,6 +1,7 @@
 package com.campusgigs.presentation.common;
 
 import com.campusgigs.dto.UserDto;
+import com.campusgigs.model.Role;
 import com.campusgigs.presentation.MainFrame;
 import com.campusgigs.util.SessionManager;
 
@@ -8,12 +9,14 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -41,7 +44,7 @@ public abstract class DashboardPanel extends JPanel {
     protected DashboardPanel(UserDto user, MainFrame frame, String welcomeText) {
         super(new BorderLayout());
         setBackground(UiConstants.BACKGROUND);
-        add(createUserBar(frame), BorderLayout.NORTH);
+        add(createUserBar(frame, user.role()), BorderLayout.NORTH);
         add(createNavigation(frame.getNavigationItems(user.role())), BorderLayout.WEST);
         screenArea.setBackground(UiConstants.BACKGROUND);
         screenArea.add(createWelcome(user, welcomeText, frame.getHomeWidgets(user.role())), HOME);
@@ -58,7 +61,7 @@ public abstract class DashboardPanel extends JPanel {
         userLabel.setText(user.fullName() + "  |  " + roleName(user));
     }
 
-    private JPanel createUserBar(MainFrame frame) {
+    private JPanel createUserBar(MainFrame frame, Role role) {
         JPanel bar = new JPanel(new BorderLayout());
         bar.setBackground(UiConstants.SURFACE);
         bar.setBorder(BorderFactory.createEmptyBorder(UiConstants.SPACING_MEDIUM, UiConstants.SPACING_LARGE,
@@ -67,8 +70,14 @@ public abstract class DashboardPanel extends JPanel {
         userLabel.setForeground(UiConstants.TEXT);
         JButton logout = new JButton("Logout");
         logout.addActionListener(e -> frame.endSession());
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, UiConstants.SPACING_MEDIUM, 0));
+        right.setOpaque(false);
+        for (Supplier<JComponent> widget : frame.getHeaderWidgets(role)) {
+            right.add(widget.get());
+        }
+        right.add(logout);
         bar.add(userLabel, BorderLayout.WEST);
-        bar.add(logout, BorderLayout.EAST);
+        bar.add(right, BorderLayout.EAST);
         return bar;
     }
 

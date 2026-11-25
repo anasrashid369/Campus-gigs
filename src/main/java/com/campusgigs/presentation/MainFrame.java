@@ -8,6 +8,7 @@ import com.campusgigs.presentation.common.UiConstants;
 import com.campusgigs.util.SessionManager;
 
 import javax.swing.BorderFactory;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -45,6 +46,7 @@ public class MainFrame extends JFrame {
     private final Map<String, JPanel> cardsByName = new HashMap<>();
     private final Map<Role, List<NavigationItem>> navigation = new EnumMap<>(Role.class);
     private final Map<Role, List<Supplier<JPanel>>> homeWidgets = new EnumMap<>(Role.class);
+    private final Map<Role, List<Supplier<JComponent>>> headerWidgets = new EnumMap<>(Role.class);
 
     public MainFrame() {
         super(UiConstants.APP_TITLE);
@@ -113,6 +115,23 @@ public class MainFrame extends JFrame {
         Objects.requireNonNull(role, "role");
         Objects.requireNonNull(widget, "widget");
         homeWidgets.computeIfAbsent(role, r -> new ArrayList<>()).add(widget);
+    }
+
+    /**
+     * Adds a small component (for example the notification badge) to the user bar of every
+     * dashboard of the role, left of the Logout button.
+     *
+     * @param widget creates the component; called once per login, when the dashboard is built
+     */
+    public void addHeaderWidget(Role role, Supplier<JComponent> widget) {
+        Objects.requireNonNull(role, "role");
+        Objects.requireNonNull(widget, "widget");
+        headerWidgets.computeIfAbsent(role, r -> new ArrayList<>()).add(widget);
+    }
+
+    /** The header widgets for a role, in the order they were added. */
+    public List<Supplier<JComponent>> getHeaderWidgets(Role role) {
+        return List.copyOf(headerWidgets.getOrDefault(role, List.of()));
     }
 
     /** The home widgets for a role, in the order they were added. */

@@ -9,8 +9,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.GraphicsEnvironment;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -123,6 +125,29 @@ class MainFrameTest {
         assertEquals(second, frame.getHomeWidgets(Role.CLIENT).get(1).get());
         assertEquals(1, frame.getHomeWidgets(Role.ADMIN).size());
         assertTrue(frame.getHomeWidgets(Role.FREELANCER).isEmpty());
+    }
+
+    @Test
+    void headerWidgetsAreShownOnlyInTheirRolesDashboard() {
+        JLabel clientBadge = new JLabel("client badge");
+        frame.addHeaderWidget(Role.CLIENT, () -> clientBadge);
+        frame.addHeaderWidget(Role.ADMIN, JLabel::new);
+
+        assertEquals(1, frame.getHeaderWidgets(Role.CLIENT).size());
+        assertTrue(frame.getHeaderWidgets(Role.FREELANCER).isEmpty());
+
+        frame.startSession(new UserDto(2, Role.CLIENT, "Ali Raza", "ali@uni.edu.pk", AccountStatus.ACTIVE));
+        assertTrue(contains(frame.getContentPane(), clientBadge));
+        assertThrows(NullPointerException.class, () -> frame.addHeaderWidget(Role.CLIENT, null));
+    }
+
+    private static boolean contains(Container parent, Component target) {
+        for (Component child : parent.getComponents()) {
+            if (child == target || child instanceof Container c && contains(c, target)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Test
