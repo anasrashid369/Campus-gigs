@@ -10,19 +10,19 @@ import com.campusgigs.dao.TransactionManager;
 import com.campusgigs.dao.UserDao;
 import com.campusgigs.dao.SkillDao;
 import com.campusgigs.dao.WalletDao;
-import com.campusgigs.dao.jdbc.ApplicationDaoJdbc;
-import com.campusgigs.dao.jdbc.CategoryDaoJdbc;
-import com.campusgigs.dao.jdbc.ConnectionProvider;
-import com.campusgigs.dao.jdbc.DisputeDaoJdbc;
-import com.campusgigs.dao.jdbc.FreelancerProfileDaoJdbc;
-import com.campusgigs.dao.jdbc.GigDaoJdbc;
-import com.campusgigs.dao.jdbc.NotificationDaoJdbc;
-import com.campusgigs.dao.jdbc.SettingsDaoJdbc;
-import com.campusgigs.dao.jdbc.SkillDaoJdbc;
-import com.campusgigs.dao.jdbc.TransactionDaoJdbc;
-import com.campusgigs.dao.jdbc.TransactionHelper;
-import com.campusgigs.dao.jdbc.UserDaoJdbc;
-import com.campusgigs.dao.jdbc.WalletDaoJdbc;
+import com.campusgigs.dao.hibernate.ApplicationDaoHibernate;
+import com.campusgigs.dao.hibernate.CategoryDaoHibernate;
+import com.campusgigs.dao.hibernate.DisputeDaoHibernate;
+import com.campusgigs.dao.hibernate.FreelancerProfileDaoHibernate;
+import com.campusgigs.dao.hibernate.GigDaoHibernate;
+import com.campusgigs.dao.hibernate.HibernateSessionFactory;
+import com.campusgigs.dao.hibernate.HibernateTransactionManager;
+import com.campusgigs.dao.hibernate.NotificationDaoHibernate;
+import com.campusgigs.dao.hibernate.SettingsDaoHibernate;
+import com.campusgigs.dao.hibernate.SkillDaoHibernate;
+import com.campusgigs.dao.hibernate.TransactionDaoHibernate;
+import com.campusgigs.dao.hibernate.UserDaoHibernate;
+import com.campusgigs.dao.hibernate.WalletDaoHibernate;
 import com.campusgigs.dto.GigSort;
 import com.campusgigs.exception.ConfigurationException;
 import com.campusgigs.model.Role;
@@ -89,6 +89,8 @@ import com.campusgigs.service.impl.TransactionServiceImpl;
 import com.campusgigs.service.impl.UserServiceImpl;
 import com.campusgigs.service.impl.WalletServiceImpl;
 
+import org.hibernate.SessionFactory;
+
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import java.time.Clock;
@@ -110,28 +112,28 @@ public final class Main {
     }
 
     private static void start() {
-        ConnectionProvider db;
+        SessionFactory db;
         try {
-            db = ConnectionProvider.getInstance();
+            db = HibernateSessionFactory.getInstance();
         } catch (ConfigurationException e) {
             JOptionPane.showMessageDialog(null, e.getMessage(), "Campus Gigs cannot start",
                     JOptionPane.ERROR_MESSAGE);
             return;
         }
-        TransactionManager transactions = new TransactionHelper(db);
-        UserDao userDao = new UserDaoJdbc(db);
-        SkillDao skillDao = new SkillDaoJdbc(db);
-        CategoryDao categoryDao = new CategoryDaoJdbc(db);
+        TransactionManager transactions = new HibernateTransactionManager(db);
+        UserDao userDao = new UserDaoHibernate(db);
+        SkillDao skillDao = new SkillDaoHibernate(db);
+        CategoryDao categoryDao = new CategoryDaoHibernate(db);
 
-        SettingsService settingsService = new SettingsServiceImpl(new SettingsDaoJdbc(db), userDao);
-        WalletDao walletDao = new WalletDaoJdbc(db);
-        TransactionDao transactionDao = new TransactionDaoJdbc(db);
+        SettingsService settingsService = new SettingsServiceImpl(new SettingsDaoHibernate(db), userDao);
+        WalletDao walletDao = new WalletDaoHibernate(db);
+        TransactionDao transactionDao = new TransactionDaoHibernate(db);
         WalletService walletService = new WalletServiceImpl(walletDao, transactionDao,
                 new SimulatedPaymentGateway(), transactions, EventBus.getInstance(), userDao);
         TransactionService transactionService = new TransactionServiceImpl(walletDao, transactionDao);
-        GigDao gigDao = new GigDaoJdbc(db);
-        DisputeDao disputeDao = new DisputeDaoJdbc(db);
-        NotificationServiceImpl notificationService = new NotificationServiceImpl(new NotificationDaoJdbc(db),
+        GigDao gigDao = new GigDaoHibernate(db);
+        DisputeDao disputeDao = new DisputeDaoHibernate(db);
+        NotificationServiceImpl notificationService = new NotificationServiceImpl(new NotificationDaoHibernate(db),
                 userDao, gigDao);
         notificationService.subscribeTo(EventBus.getInstance());
         EscrowService escrowService = new EscrowServiceImpl(walletDao, transactionDao, transactions);
@@ -143,10 +145,10 @@ public final class Main {
         EarningsService earningsService = new EarningsServiceImpl(userDao, walletDao, transactionDao, gigDao);
         GigService gigService = new GigServiceImpl(gigDao, categoryDao, skillDao, userDao, gigStateMachine,
                 transactions, Clock.systemDefaultZone());
-        ApplicationDao applicationDao = new ApplicationDaoJdbc(db);
+        ApplicationDao applicationDao = new ApplicationDaoHibernate(db);
         ApplicationService applicationService = new ApplicationServiceImpl(applicationDao, gigDao, userDao,
                 settingsService, lifecycleService, transactions, EventBus.getInstance());
-        FreelancerProfileDao profileDao = new FreelancerProfileDaoJdbc(db);
+        FreelancerProfileDao profileDao = new FreelancerProfileDaoHibernate(db);
         GigSearchService gigSearchService = new GigSearchServiceImpl(gigDao, userDao, profileDao,
                 rankingStrategies());
         MonitoringService monitoringService = new MonitoringServiceImpl(gigDao, applicationDao, transactionDao,
