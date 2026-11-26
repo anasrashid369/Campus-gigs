@@ -57,9 +57,9 @@ sudo mysql -e "DROP DATABASE IF EXISTS campus_gigs;" && sudo mysql < db/01_schem
 
 | Area | Classes |
 |---|---|
-| Config / DB | `util.ConfigLoader`, `dao.jdbc.ConnectionProvider` (new connection per call) |
-| Transactions | `dao.TransactionManager` (interface, use this in services), `dao.jdbc.TransactionHelper` |
-| DAO base | `dao.jdbc.BaseJdbcDao` (extend it for JDBC DAOs; it joins the running transaction automatically) |
+| Config / DB | `util.ConfigLoader`, `dao.hibernate.HibernateSessionFactory` (one SessionFactory, built from config.properties) |
+| Transactions | `dao.TransactionManager` (interface, use this in services), `dao.hibernate.HibernateTransactionManager` |
+| DAO base | `dao.hibernate.BaseHibernateDao` (extend it for DAOs; it joins the running transaction automatically). Entities in `dao.hibernate.entity`, one per table |
 | Models | records in `model/`: `User`, `Gig`, `GigApplication`, `Wallet`, `Transaction`, `Review`, `Dispute`, `Notification`, `FreelancerProfile`, `Skill`, `GigCategory`, enums `Role`, `AccountStatus`, `GigStatus`, `ApplicationStatus`, `TransactionType`, `DisputeStatus`, `DisputeDecision` |
 | Exceptions | `ValidationException` and `ResourceNotFoundException` (messages are safe to show the user), `DataAccessException`, `ConfigurationException` (technical; log them, show a generic message) |
 | Wallet and escrow | `service.WalletService` (createWallet, getWallet, topUp for clients, withdraw for freelancers), `service.EscrowService` (holdInEscrow, releaseToFreelancer, refundToClient), `service.TransactionService`, `service.EarningsService`, DTOs `WalletDto`, `TransactionDto`, `PayoutDto`, `EarningsDto` |
@@ -101,9 +101,9 @@ return transactions.call(() -> {
 
 - Presentation (Swing) -> Service -> DAO. Presentation never calls a DAO and has no SQL or business rules.
 - Services never import `javax.swing` or `java.sql`. DAOs hold SQL and row mapping only.
-- Services depend on interfaces (DAO, `PaymentGateway`, `TransactionManager`), never on JDBC classes.
+- Services depend on interfaces (DAO, `PaymentGateway`, `TransactionManager`), never on Hibernate classes.
 - Layers pass DTOs (`dto/`), not `model/` records, to the screens. Never put `passwordHash` in a DTO.
-- `PreparedStatement` for every query, never string-built SQL.
+- HQL with named parameters (`:name`) for every query, never values glued into the query string. Locks use `LockModeType.PESSIMISTIC_WRITE` (SELECT ... FOR UPDATE).
 - Every multi-step database change runs inside `transactions.call(...)`.
 - Swing: build components on the Event Dispatch Thread; run database calls in a `SwingWorker`; action listeners only collect input, call a service, and show the result.
 - Check the caller's role inside the service, not only by hiding buttons.
