@@ -1,4 +1,4 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -47,9 +48,9 @@ class LedgerReconciliationIntegrationTest {
     private static final int GIGS_PER_CLIENT = 4;
     private static final int STEPS = 250;
 
-    private ConnectionProvider provider;
-    private WalletDaoJdbc wallets;
-    private TransactionDaoJdbc ledger;
+    private SessionFactory db;
+    private WalletDaoHibernate wallets;
+    private TransactionDaoHibernate ledger;
     private GigLifecycleServiceImpl lifecycle;
     private DisputeServiceImpl disputes;
     private WalletServiceImpl walletService;
@@ -64,13 +65,13 @@ class LedgerReconciliationIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        provider = DbTestSupport.provider();
-        wallets = new WalletDaoJdbc(provider);
-        ledger = new TransactionDaoJdbc(provider);
-        GigDaoJdbc gigs = new GigDaoJdbc(provider);
-        DisputeDaoJdbc disputeDao = new DisputeDaoJdbc(provider);
-        UserDaoJdbc users = new UserDaoJdbc(provider);
-        TransactionHelper transactions = new TransactionHelper(provider);
+        db = DbTestSupport.sessionFactory();
+        wallets = new WalletDaoHibernate(db);
+        ledger = new TransactionDaoHibernate(db);
+        GigDaoHibernate gigs = new GigDaoHibernate(db);
+        DisputeDaoHibernate disputeDao = new DisputeDaoHibernate(db);
+        UserDaoHibernate users = new UserDaoHibernate(db);
+        HibernateTransactionManager transactions = new HibernateTransactionManager(db);
         EscrowServiceImpl escrow = new EscrowServiceImpl(wallets, ledger, transactions);
         SettingsService settings = mock(SettingsService.class);
         when(settings.getPlatformFeePercent()).thenReturn(7);   // 7% so fees are often rounded down
@@ -80,19 +81,19 @@ class LedgerReconciliationIntegrationTest {
         disputes = new DisputeServiceImpl(disputeDao, gigs, users, escrow, settings, machine, transactions, bus);
         walletService = new WalletServiceImpl(wallets, ledger, new SimulatedPaymentGateway(), transactions, bus, users);
 
-        categoryId = DbTestSupport.createCategory(provider);
-        adminId = DbTestSupport.createUser(provider, "ADMIN");
+        categoryId = DbTestSupport.createCategory(db);
+        adminId = DbTestSupport.createUser(db, "ADMIN");
         for (int i = 0; i < CLIENTS; i++) {
-            long client = DbTestSupport.createUser(provider, "CLIENT");
+            long client = DbTestSupport.createUser(db, "CLIENT");
             clientIds.add(client);
             walletService.createWallet(client, 1500);
             for (int g = 0; g < GIGS_PER_CLIENT; g++) {
-                gigIds.add(DbTestSupport.createGig(provider, client, categoryId, 100 + 50 * g));
+                gigIds.add(DbTestSupport.createGig(db, client, categoryId, 100 + 50 * g));
                 gigOwners.add(client);
             }
         }
         for (int i = 0; i < FREELANCERS; i++) {
-            long freelancer = DbTestSupport.createUser(provider, "FREELANCER");
+            long freelancer = DbTestSupport.createUser(db, "FREELANCER");
             freelancerIds.add(freelancer);
             walletService.createWallet(freelancer, 0);
         }
@@ -100,20 +101,20 @@ class LedgerReconciliationIntegrationTest {
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider == null) {
+        if (db == null) {
             return;
         }
         for (long gigId : gigIds) {
-            DbTestSupport.deleteGig(provider, gigId);
+            DbTestSupport.deleteGig(db, gigId);
         }
-        DbTestSupport.deleteCategory(provider, categoryId);
+        DbTestSupport.deleteCategory(db, categoryId);
         for (long id : clientIds) {
-            DbTestSupport.deleteUser(provider, id);
+            DbTestSupport.deleteUser(db, id);
         }
         for (long id : freelancerIds) {
-            DbTestSupport.deleteUser(provider, id);
+            DbTestSupport.deleteUser(db, id);
         }
-        DbTestSupport.deleteUser(provider, adminId);
+        DbTestSupport.deleteUser(db, adminId);
     }
 
     @ParameterizedTest(name = "seed {0}")

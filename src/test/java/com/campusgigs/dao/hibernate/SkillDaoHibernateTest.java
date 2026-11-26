@@ -1,43 +1,38 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.util.UUID;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Runs against the local MySQL database (skipped when config/config.properties is missing). */
-class SkillDaoJdbcTest {
+class SkillDaoHibernateTest {
 
-    private ConnectionProvider provider;
-    private SkillDaoJdbc skills;
+    private SessionFactory db;
+    private SkillDaoHibernate skills;
     private long skillId;
     private long userId;
 
     @BeforeEach
     void setUp() throws Exception {
-        provider = DbTestSupport.provider();
-        skills = new SkillDaoJdbc(provider);
+        db = DbTestSupport.sessionFactory();
+        skills = new SkillDaoHibernate(db);
         skillId = skills.insert("Test " + UUID.randomUUID());
-        userId = DbTestSupport.createUser(provider);
+        userId = DbTestSupport.createUser(db);
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider == null) {
+        if (db == null) {
             return;
         }
-        DbTestSupport.deleteUser(provider, userId);
-        try (Connection c = provider.getConnection();
-             PreparedStatement ps = c.prepareStatement("DELETE FROM Skills WHERE skill_id = ?")) {
-            ps.setLong(1, skillId);
-            ps.executeUpdate();
-        }
+        DbTestSupport.deleteUser(db, userId);
+        DbTestSupport.execute(db, "DELETE FROM Skills WHERE skill_id = ?1", skillId);
     }
 
     @Test
@@ -57,12 +52,7 @@ class SkillDaoJdbcTest {
 
     @Test
     void skillUsedByAProfileIsKept() throws Exception {
-        try (Connection c = provider.getConnection();
-             PreparedStatement ps = c.prepareStatement("INSERT INTO UserSkills (user_id, skill_id) VALUES (?, ?)")) {
-            ps.setLong(1, userId);
-            ps.setLong(2, skillId);
-            ps.executeUpdate();
-        }
+        DbTestSupport.execute(db, "INSERT INTO UserSkills (user_id, skill_id) VALUES (?1, ?2)", userId, skillId);
 
         assertFalse(skills.deleteIfUnused(skillId));
         assertTrue(skills.findById(skillId).isPresent());

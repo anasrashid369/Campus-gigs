@@ -1,40 +1,35 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.util.Optional;
 import java.util.UUID;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Runs against the local MySQL database (skipped when config/config.properties is missing). */
-class SettingsDaoJdbcTest {
+class SettingsDaoHibernateTest {
 
-    private ConnectionProvider provider;
-    private SettingsDaoJdbc settings;
+    private SessionFactory db;
+    private SettingsDaoHibernate settings;
     private String key;
 
     @BeforeEach
     void setUp() {
-        provider = DbTestSupport.provider();
-        settings = new SettingsDaoJdbc(provider);
+        db = DbTestSupport.sessionFactory();
+        settings = new SettingsDaoHibernate(db);
         key = "test_" + UUID.randomUUID();
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider == null) {
+        if (db == null) {
             return;
         }
-        try (Connection c = provider.getConnection();
-             PreparedStatement ps = c.prepareStatement("DELETE FROM PlatformSettings WHERE setting_key = ?")) {
-            ps.setString(1, key);
-            ps.executeUpdate();
-        }
+        DbTestSupport.execute(db, "DELETE FROM PlatformSettings WHERE setting_key = ?1", key);
     }
 
     @Test

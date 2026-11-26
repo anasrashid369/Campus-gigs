@@ -1,4 +1,4 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -8,15 +8,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.campusgigs.model.Dispute;
 import com.campusgigs.model.DisputeDecision;
 import com.campusgigs.model.DisputeStatus;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Runs against the local MySQL database (skipped when config/config.properties is missing). */
-class DisputeDaoJdbcTest {
+class DisputeDaoHibernateTest {
 
-    private ConnectionProvider provider;
-    private DisputeDaoJdbc disputes;
+    private SessionFactory db;
+    private DisputeDaoHibernate disputes;
     private long clientId;
     private long adminId;
     private long categoryId;
@@ -24,21 +25,21 @@ class DisputeDaoJdbcTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        provider = DbTestSupport.provider();
-        disputes = new DisputeDaoJdbc(provider);
-        clientId = DbTestSupport.createUser(provider, "CLIENT");
-        adminId = DbTestSupport.createUser(provider, "ADMIN");
-        categoryId = DbTestSupport.createCategory(provider);
-        gigId = DbTestSupport.createGig(provider, clientId, categoryId, 100);
+        db = DbTestSupport.sessionFactory();
+        disputes = new DisputeDaoHibernate(db);
+        clientId = DbTestSupport.createUser(db, "CLIENT");
+        adminId = DbTestSupport.createUser(db, "ADMIN");
+        categoryId = DbTestSupport.createCategory(db);
+        gigId = DbTestSupport.createGig(db, clientId, categoryId, 100);
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider != null) {
-            DbTestSupport.deleteGig(provider, gigId);
-            DbTestSupport.deleteCategory(provider, categoryId);
-            DbTestSupport.deleteUser(provider, clientId);
-            DbTestSupport.deleteUser(provider, adminId);
+        if (db != null) {
+            DbTestSupport.deleteGig(db, gigId);
+            DbTestSupport.deleteCategory(db, categoryId);
+            DbTestSupport.deleteUser(db, clientId);
+            DbTestSupport.deleteUser(db, adminId);
         }
     }
 

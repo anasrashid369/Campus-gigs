@@ -1,4 +1,4 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,26 +20,26 @@ import org.junit.jupiter.api.Test;
 /** End-to-end service test on the real database: locking keeps concurrent top-ups exact. */
 class WalletTopUpConcurrencyTest {
 
-    private ConnectionProvider provider;
+    private SessionFactory db;
     private WalletService wallets;
     private TransactionServiceImpl history;
     private long userId;
 
     @BeforeEach
     void setUp() throws Exception {
-        provider = DbTestSupport.provider();
-        WalletDaoJdbc walletDao = new WalletDaoJdbc(provider);
-        TransactionDaoJdbc ledger = new TransactionDaoJdbc(provider);
+        db = DbTestSupport.sessionFactory();
+        WalletDaoHibernate walletDao = new WalletDaoHibernate(db);
+        TransactionDaoHibernate ledger = new TransactionDaoHibernate(db);
         wallets = new WalletServiceImpl(walletDao, ledger, new SimulatedPaymentGateway(),
-                new TransactionHelper(provider), new EventBus(), new UserDaoJdbc(provider));
+                new HibernateTransactionManager(db), new EventBus(), new UserDaoHibernate(db));
         history = new TransactionServiceImpl(walletDao, ledger);
-        userId = DbTestSupport.createUser(provider);
+        userId = DbTestSupport.createUser(db);
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider != null) {
-            DbTestSupport.deleteUser(provider, userId);
+        if (db != null) {
+            DbTestSupport.deleteUser(db, userId);
         }
     }
 

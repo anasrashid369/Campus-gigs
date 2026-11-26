@@ -1,4 +1,4 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -12,32 +12,33 @@ import com.campusgigs.model.Wallet;
 import com.campusgigs.model.LedgerEntry;
 import java.time.LocalDate;
 import java.util.List;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Runs against the local MySQL database (skipped when config/config.properties is missing). */
-class WalletDaoJdbcTest {
+class WalletDaoHibernateTest {
 
-    private ConnectionProvider provider;
-    private TransactionHelper tx;
-    private WalletDaoJdbc wallets;
-    private TransactionDaoJdbc ledger;
+    private SessionFactory db;
+    private HibernateTransactionManager tx;
+    private WalletDaoHibernate wallets;
+    private TransactionDaoHibernate ledger;
     private long userId;
 
     @BeforeEach
     void setUp() throws Exception {
-        provider = DbTestSupport.provider();
-        tx = new TransactionHelper(provider);
-        wallets = new WalletDaoJdbc(provider);
-        ledger = new TransactionDaoJdbc(provider);
-        userId = DbTestSupport.createUser(provider);
+        db = DbTestSupport.sessionFactory();
+        tx = new HibernateTransactionManager(db);
+        wallets = new WalletDaoHibernate(db);
+        ledger = new TransactionDaoHibernate(db);
+        userId = DbTestSupport.createUser(db);
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider != null) {
-            DbTestSupport.deleteUser(provider, userId);
+        if (db != null) {
+            DbTestSupport.deleteUser(db, userId);
         }
     }
 

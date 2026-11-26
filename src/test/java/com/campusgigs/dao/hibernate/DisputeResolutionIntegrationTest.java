@@ -1,4 +1,4 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,9 +34,9 @@ import org.junit.jupiter.api.Test;
 /** Dispute resolution on the real database: either outcome conserves tokens and a dispute is decided once. */
 class DisputeResolutionIntegrationTest {
 
-    private ConnectionProvider provider;
-    private WalletDaoJdbc wallets;
-    private GigDaoJdbc gigs;
+    private SessionFactory db;
+    private WalletDaoHibernate wallets;
+    private GigDaoHibernate gigs;
     private DisputeServiceImpl disputeService;
     private GigLifecycleService lifecycle;
     private long clientId;
@@ -48,13 +49,13 @@ class DisputeResolutionIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        provider = DbTestSupport.provider();
-        wallets = new WalletDaoJdbc(provider);
-        gigs = new GigDaoJdbc(provider);
-        DisputeDaoJdbc disputes = new DisputeDaoJdbc(provider);
-        UserDaoJdbc users = new UserDaoJdbc(provider);
-        TransactionHelper transactions = new TransactionHelper(provider);
-        EscrowServiceImpl escrow = new EscrowServiceImpl(wallets, new TransactionDaoJdbc(provider), transactions);
+        db = DbTestSupport.sessionFactory();
+        wallets = new WalletDaoHibernate(db);
+        gigs = new GigDaoHibernate(db);
+        DisputeDaoHibernate disputes = new DisputeDaoHibernate(db);
+        UserDaoHibernate users = new UserDaoHibernate(db);
+        HibernateTransactionManager transactions = new HibernateTransactionManager(db);
+        EscrowServiceImpl escrow = new EscrowServiceImpl(wallets, new TransactionDaoHibernate(db), transactions);
         SettingsService settings = mock(SettingsService.class);
         when(settings.getPlatformFeePercent()).thenReturn(5);
         GigStateMachine machine = new GigStateMachine();
@@ -62,12 +63,12 @@ class DisputeResolutionIntegrationTest {
         lifecycle = new GigLifecycleServiceImpl(gigs, disputes, users, escrow, settings, machine, transactions, bus);
         disputeService = new DisputeServiceImpl(disputes, gigs, users, escrow, settings, machine, transactions, bus);
 
-        clientId = DbTestSupport.createUser(provider, "CLIENT");
-        freelancerId = DbTestSupport.createUser(provider, "FREELANCER");
-        adminId = DbTestSupport.createUser(provider, "ADMIN");
-        otherAdminId = DbTestSupport.createUser(provider, "ADMIN");
-        categoryId = DbTestSupport.createCategory(provider);
-        gigId = DbTestSupport.createGig(provider, clientId, categoryId, 600);
+        clientId = DbTestSupport.createUser(db, "CLIENT");
+        freelancerId = DbTestSupport.createUser(db, "FREELANCER");
+        adminId = DbTestSupport.createUser(db, "ADMIN");
+        otherAdminId = DbTestSupport.createUser(db, "ADMIN");
+        categoryId = DbTestSupport.createCategory(db);
+        gigId = DbTestSupport.createGig(db, clientId, categoryId, 600);
 
         wallets.create(clientId, 1000);
         wallets.create(freelancerId, 0);
@@ -78,13 +79,13 @@ class DisputeResolutionIntegrationTest {
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider != null) {
-            DbTestSupport.deleteGig(provider, gigId);
-            DbTestSupport.deleteCategory(provider, categoryId);
-            DbTestSupport.deleteUser(provider, clientId);
-            DbTestSupport.deleteUser(provider, freelancerId);
-            DbTestSupport.deleteUser(provider, adminId);
-            DbTestSupport.deleteUser(provider, otherAdminId);
+        if (db != null) {
+            DbTestSupport.deleteGig(db, gigId);
+            DbTestSupport.deleteCategory(db, categoryId);
+            DbTestSupport.deleteUser(db, clientId);
+            DbTestSupport.deleteUser(db, freelancerId);
+            DbTestSupport.deleteUser(db, adminId);
+            DbTestSupport.deleteUser(db, otherAdminId);
         }
     }
 

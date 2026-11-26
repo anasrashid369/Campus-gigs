@@ -1,4 +1,4 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -13,6 +13,7 @@ import com.campusgigs.service.impl.EscrowServiceImpl;
 import com.campusgigs.service.impl.GigLifecycleServiceImpl;
 import com.campusgigs.service.impl.WalletServiceImpl;
 import com.campusgigs.payment.SimulatedPaymentGateway;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,8 +21,8 @@ import org.junit.jupiter.api.Test;
 /** Earnings figures follow real payouts, withdrawals and open gigs on the database. */
 class EarningsServiceIntegrationTest {
 
-    private ConnectionProvider provider;
-    private WalletDaoJdbc wallets;
+    private SessionFactory db;
+    private WalletDaoHibernate wallets;
     private GigLifecycleServiceImpl lifecycle;
     private WalletServiceImpl walletService;
     private EarningsServiceImpl earnings;
@@ -33,38 +34,38 @@ class EarningsServiceIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        provider = DbTestSupport.provider();
-        wallets = new WalletDaoJdbc(provider);
-        TransactionDaoJdbc ledger = new TransactionDaoJdbc(provider);
-        GigDaoJdbc gigs = new GigDaoJdbc(provider);
-        UserDaoJdbc users = new UserDaoJdbc(provider);
-        TransactionHelper transactions = new TransactionHelper(provider);
+        db = DbTestSupport.sessionFactory();
+        wallets = new WalletDaoHibernate(db);
+        TransactionDaoHibernate ledger = new TransactionDaoHibernate(db);
+        GigDaoHibernate gigs = new GigDaoHibernate(db);
+        UserDaoHibernate users = new UserDaoHibernate(db);
+        HibernateTransactionManager transactions = new HibernateTransactionManager(db);
         SettingsService settings = mock(SettingsService.class);
         when(settings.getPlatformFeePercent()).thenReturn(5);
         EventBus bus = new EventBus();
-        lifecycle = new GigLifecycleServiceImpl(gigs, new DisputeDaoJdbc(provider), users,
+        lifecycle = new GigLifecycleServiceImpl(gigs, new DisputeDaoHibernate(db), users,
                 new EscrowServiceImpl(wallets, ledger, transactions), settings, new GigStateMachine(),
                 transactions, bus);
         walletService = new WalletServiceImpl(wallets, ledger, new SimulatedPaymentGateway(), transactions, bus, users);
         earnings = new EarningsServiceImpl(users, wallets, ledger, gigs);
 
-        clientId = DbTestSupport.createUser(provider, "CLIENT");
-        freelancerId = DbTestSupport.createUser(provider, "FREELANCER");
-        categoryId = DbTestSupport.createCategory(provider);
-        firstGigId = DbTestSupport.createGig(provider, clientId, categoryId, 600);
-        secondGigId = DbTestSupport.createGig(provider, clientId, categoryId, 300);
+        clientId = DbTestSupport.createUser(db, "CLIENT");
+        freelancerId = DbTestSupport.createUser(db, "FREELANCER");
+        categoryId = DbTestSupport.createCategory(db);
+        firstGigId = DbTestSupport.createGig(db, clientId, categoryId, 600);
+        secondGigId = DbTestSupport.createGig(db, clientId, categoryId, 300);
         wallets.create(clientId, 1000);
         wallets.create(freelancerId, 0);
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider != null) {
-            DbTestSupport.deleteGig(provider, firstGigId);
-            DbTestSupport.deleteGig(provider, secondGigId);
-            DbTestSupport.deleteCategory(provider, categoryId);
-            DbTestSupport.deleteUser(provider, clientId);
-            DbTestSupport.deleteUser(provider, freelancerId);
+        if (db != null) {
+            DbTestSupport.deleteGig(db, firstGigId);
+            DbTestSupport.deleteGig(db, secondGigId);
+            DbTestSupport.deleteCategory(db, categoryId);
+            DbTestSupport.deleteUser(db, clientId);
+            DbTestSupport.deleteUser(db, freelancerId);
         }
     }
 

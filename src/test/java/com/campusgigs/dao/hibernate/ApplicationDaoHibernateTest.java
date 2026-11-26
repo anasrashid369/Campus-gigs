@@ -1,4 +1,4 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -8,15 +8,16 @@ import com.campusgigs.exception.DataAccessException;
 import com.campusgigs.model.ApplicationStatus;
 import com.campusgigs.model.GigApplication;
 import java.util.List;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Runs against the local MySQL database (skipped when config/config.properties is missing). */
-class ApplicationDaoJdbcTest {
+class ApplicationDaoHibernateTest {
 
-    private ConnectionProvider provider;
-    private ApplicationDaoJdbc applications;
+    private SessionFactory db;
+    private ApplicationDaoHibernate applications;
     private long clientId;
     private long firstFreelancerId;
     private long secondFreelancerId;
@@ -25,23 +26,23 @@ class ApplicationDaoJdbcTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        provider = DbTestSupport.provider();
-        applications = new ApplicationDaoJdbc(provider);
-        clientId = DbTestSupport.createUser(provider, "CLIENT");
-        firstFreelancerId = DbTestSupport.createUser(provider, "FREELANCER");
-        secondFreelancerId = DbTestSupport.createUser(provider, "FREELANCER");
-        categoryId = DbTestSupport.createCategory(provider);
-        gigId = DbTestSupport.createGig(provider, clientId, categoryId, 200);
+        db = DbTestSupport.sessionFactory();
+        applications = new ApplicationDaoHibernate(db);
+        clientId = DbTestSupport.createUser(db, "CLIENT");
+        firstFreelancerId = DbTestSupport.createUser(db, "FREELANCER");
+        secondFreelancerId = DbTestSupport.createUser(db, "FREELANCER");
+        categoryId = DbTestSupport.createCategory(db);
+        gigId = DbTestSupport.createGig(db, clientId, categoryId, 200);
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider != null) {
-            DbTestSupport.deleteGig(provider, gigId);
-            DbTestSupport.deleteCategory(provider, categoryId);
-            DbTestSupport.deleteUser(provider, clientId);
-            DbTestSupport.deleteUser(provider, firstFreelancerId);
-            DbTestSupport.deleteUser(provider, secondFreelancerId);
+        if (db != null) {
+            DbTestSupport.deleteGig(db, gigId);
+            DbTestSupport.deleteCategory(db, categoryId);
+            DbTestSupport.deleteUser(db, clientId);
+            DbTestSupport.deleteUser(db, firstFreelancerId);
+            DbTestSupport.deleteUser(db, secondFreelancerId);
         }
     }
 
@@ -76,7 +77,7 @@ class ApplicationDaoJdbcTest {
     void listsByGigOldestFirstAndByFreelancerNewestFirst() throws Exception {
         long first = applications.insert(gigId, firstFreelancerId, "First");
         long second = applications.insert(gigId, secondFreelancerId, "Second");
-        long otherGig = DbTestSupport.createGig(provider, clientId, categoryId, 50);
+        long otherGig = DbTestSupport.createGig(db, clientId, categoryId, 50);
         try {
             long third = applications.insert(otherGig, firstFreelancerId, "Third");
 
@@ -85,7 +86,7 @@ class ApplicationDaoJdbcTest {
             List<GigApplication> ofFreelancer = applications.findByFreelancerId(firstFreelancerId);
             assertEquals(List.of(third, first), ofFreelancer.stream().map(GigApplication::applicationId).toList());
         } finally {
-            DbTestSupport.deleteGig(provider, otherGig);
+            DbTestSupport.deleteGig(db, otherGig);
         }
     }
 

@@ -1,4 +1,4 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,10 +38,10 @@ class GigLifecycleIntegrationTest {
 
     private static final long BUDGET = 600;
 
-    private ConnectionProvider provider;
-    private WalletDaoJdbc wallets;
-    private GigDaoJdbc gigs;
-    private DisputeDaoJdbc disputes;
+    private SessionFactory db;
+    private WalletDaoHibernate wallets;
+    private GigDaoHibernate gigs;
+    private DisputeDaoHibernate disputes;
     private GigLifecycleService lifecycle;
     private long clientId;
     private long freelancerId;
@@ -50,32 +51,32 @@ class GigLifecycleIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        provider = DbTestSupport.provider();
-        wallets = new WalletDaoJdbc(provider);
-        gigs = new GigDaoJdbc(provider);
-        disputes = new DisputeDaoJdbc(provider);
-        TransactionHelper transactions = new TransactionHelper(provider);
+        db = DbTestSupport.sessionFactory();
+        wallets = new WalletDaoHibernate(db);
+        gigs = new GigDaoHibernate(db);
+        disputes = new DisputeDaoHibernate(db);
+        HibernateTransactionManager transactions = new HibernateTransactionManager(db);
         SettingsService settings = mock(SettingsService.class);
         when(settings.getPlatformFeePercent()).thenReturn(5);
-        lifecycle = new GigLifecycleServiceImpl(gigs, disputes, new UserDaoJdbc(provider),
-                new EscrowServiceImpl(wallets, new TransactionDaoJdbc(provider), transactions),
+        lifecycle = new GigLifecycleServiceImpl(gigs, disputes, new UserDaoHibernate(db),
+                new EscrowServiceImpl(wallets, new TransactionDaoHibernate(db), transactions),
                 settings, new GigStateMachine(), transactions, new EventBus());
 
-        clientId = DbTestSupport.createUser(provider, "CLIENT");
-        freelancerId = DbTestSupport.createUser(provider, "FREELANCER");
-        otherFreelancerId = DbTestSupport.createUser(provider, "FREELANCER");
-        categoryId = DbTestSupport.createCategory(provider);
-        gigId = DbTestSupport.createGig(provider, clientId, categoryId, BUDGET);
+        clientId = DbTestSupport.createUser(db, "CLIENT");
+        freelancerId = DbTestSupport.createUser(db, "FREELANCER");
+        otherFreelancerId = DbTestSupport.createUser(db, "FREELANCER");
+        categoryId = DbTestSupport.createCategory(db);
+        gigId = DbTestSupport.createGig(db, clientId, categoryId, BUDGET);
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider != null) {
-            DbTestSupport.deleteGig(provider, gigId);
-            DbTestSupport.deleteCategory(provider, categoryId);
-            DbTestSupport.deleteUser(provider, clientId);
-            DbTestSupport.deleteUser(provider, freelancerId);
-            DbTestSupport.deleteUser(provider, otherFreelancerId);
+        if (db != null) {
+            DbTestSupport.deleteGig(db, gigId);
+            DbTestSupport.deleteCategory(db, categoryId);
+            DbTestSupport.deleteUser(db, clientId);
+            DbTestSupport.deleteUser(db, freelancerId);
+            DbTestSupport.deleteUser(db, otherFreelancerId);
         }
     }
 

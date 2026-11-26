@@ -1,4 +1,4 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -19,6 +19,7 @@ import com.campusgigs.service.impl.EscrowServiceImpl;
 import com.campusgigs.service.impl.GigLifecycleServiceImpl;
 import java.util.ArrayList;
 import java.util.List;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,10 +27,10 @@ import org.junit.jupiter.api.Test;
 /** Apply, then hire, on the real database: applications, gig status and escrow change together or not at all. */
 class HireFlowIntegrationTest {
 
-    private ConnectionProvider provider;
-    private WalletDaoJdbc wallets;
-    private GigDaoJdbc gigs;
-    private ApplicationDaoJdbc applications;
+    private SessionFactory db;
+    private WalletDaoHibernate wallets;
+    private GigDaoHibernate gigs;
+    private ApplicationDaoHibernate applications;
     private ApplicationServiceImpl applicationService;
     private final List<Object> hiredEvents = new ArrayList<>();
     private long clientId;
@@ -40,40 +41,40 @@ class HireFlowIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        provider = DbTestSupport.provider();
-        wallets = new WalletDaoJdbc(provider);
-        gigs = new GigDaoJdbc(provider);
-        applications = new ApplicationDaoJdbc(provider);
-        UserDaoJdbc users = new UserDaoJdbc(provider);
-        TransactionHelper transactions = new TransactionHelper(provider);
+        db = DbTestSupport.sessionFactory();
+        wallets = new WalletDaoHibernate(db);
+        gigs = new GigDaoHibernate(db);
+        applications = new ApplicationDaoHibernate(db);
+        UserDaoHibernate users = new UserDaoHibernate(db);
+        HibernateTransactionManager transactions = new HibernateTransactionManager(db);
         SettingsService settings = mock(SettingsService.class);
         when(settings.getPlatformFeePercent()).thenReturn(5);
         when(settings.getMaxApplicationsPerFreelancer()).thenReturn(5);
         EventBus bus = new EventBus();
         bus.subscribe(FreelancerHired.class, hiredEvents::add);
-        GigLifecycleServiceImpl lifecycle = new GigLifecycleServiceImpl(gigs, new DisputeDaoJdbc(provider), users,
-                new EscrowServiceImpl(wallets, new TransactionDaoJdbc(provider), transactions), settings,
+        GigLifecycleServiceImpl lifecycle = new GigLifecycleServiceImpl(gigs, new DisputeDaoHibernate(db), users,
+                new EscrowServiceImpl(wallets, new TransactionDaoHibernate(db), transactions), settings,
                 new GigStateMachine(), transactions, bus);
         applicationService = new ApplicationServiceImpl(applications, gigs, users, settings, lifecycle,
                 transactions, bus);
 
-        clientId = DbTestSupport.createUser(provider, "CLIENT");
-        firstFreelancerId = DbTestSupport.createUser(provider, "FREELANCER");
-        secondFreelancerId = DbTestSupport.createUser(provider, "FREELANCER");
-        categoryId = DbTestSupport.createCategory(provider);
-        gigId = DbTestSupport.createGig(provider, clientId, categoryId, 600);
+        clientId = DbTestSupport.createUser(db, "CLIENT");
+        firstFreelancerId = DbTestSupport.createUser(db, "FREELANCER");
+        secondFreelancerId = DbTestSupport.createUser(db, "FREELANCER");
+        categoryId = DbTestSupport.createCategory(db);
+        gigId = DbTestSupport.createGig(db, clientId, categoryId, 600);
         wallets.create(firstFreelancerId, 0);
         wallets.create(secondFreelancerId, 0);
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider != null) {
-            DbTestSupport.deleteGig(provider, gigId);
-            DbTestSupport.deleteCategory(provider, categoryId);
-            DbTestSupport.deleteUser(provider, clientId);
-            DbTestSupport.deleteUser(provider, firstFreelancerId);
-            DbTestSupport.deleteUser(provider, secondFreelancerId);
+        if (db != null) {
+            DbTestSupport.deleteGig(db, gigId);
+            DbTestSupport.deleteCategory(db, categoryId);
+            DbTestSupport.deleteUser(db, clientId);
+            DbTestSupport.deleteUser(db, firstFreelancerId);
+            DbTestSupport.deleteUser(db, secondFreelancerId);
         }
     }
 

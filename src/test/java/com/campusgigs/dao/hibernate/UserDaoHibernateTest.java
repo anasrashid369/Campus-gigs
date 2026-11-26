@@ -1,4 +1,4 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -7,30 +7,31 @@ import com.campusgigs.model.AccountStatus;
 import com.campusgigs.model.Role;
 import com.campusgigs.model.User;
 import java.util.UUID;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Runs against the local MySQL database (skipped when config/config.properties is missing). */
-class UserDaoJdbcTest {
+class UserDaoHibernateTest {
 
-    private ConnectionProvider provider;
-    private UserDaoJdbc users;
+    private SessionFactory db;
+    private UserDaoHibernate users;
     private String email;
     private long userId;
 
     @BeforeEach
     void setUp() {
-        provider = DbTestSupport.provider();
-        users = new UserDaoJdbc(provider);
+        db = DbTestSupport.sessionFactory();
+        users = new UserDaoHibernate(db);
         email = "dao-" + UUID.randomUUID() + "@example.com";
         userId = users.insert(Role.FREELANCER, "Dao Test", email, "pbkdf2$test");
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider != null) {
-            DbTestSupport.deleteUser(provider, userId);
+        if (db != null) {
+            DbTestSupport.deleteUser(db, userId);
         }
     }
 

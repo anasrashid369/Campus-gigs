@@ -1,4 +1,4 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -6,33 +6,34 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.campusgigs.model.Notification;
 import java.util.List;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Runs against the local MySQL database (skipped when config/config.properties is missing). */
-class NotificationDaoJdbcTest {
+class NotificationDaoHibernateTest {
 
-    private ConnectionProvider provider;
-    private NotificationDaoJdbc notifications;
+    private SessionFactory db;
+    private NotificationDaoHibernate notifications;
     private long userId;
     private long otherUserId;
 
     @BeforeEach
     void setUp() throws Exception {
-        provider = DbTestSupport.provider();
-        notifications = new NotificationDaoJdbc(provider);
-        userId = DbTestSupport.createUser(provider);
-        otherUserId = DbTestSupport.createUser(provider);
+        db = DbTestSupport.sessionFactory();
+        notifications = new NotificationDaoHibernate(db);
+        userId = DbTestSupport.createUser(db);
+        otherUserId = DbTestSupport.createUser(db);
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider == null) {
+        if (db == null) {
             return;
         }
-        DbTestSupport.deleteUser(provider, userId);
-        DbTestSupport.deleteUser(provider, otherUserId);
+        DbTestSupport.deleteUser(db, userId);
+        DbTestSupport.deleteUser(db, otherUserId);
     }
 
     @Test

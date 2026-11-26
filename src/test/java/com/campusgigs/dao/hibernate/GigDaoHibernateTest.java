@@ -1,4 +1,4 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -13,15 +13,16 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Runs against the local MySQL database (skipped when config/config.properties is missing). */
-class GigDaoJdbcTest {
+class GigDaoHibernateTest {
 
-    private ConnectionProvider provider;
-    private GigDaoJdbc gigs;
+    private SessionFactory db;
+    private GigDaoHibernate gigs;
     private long clientId;
     private long freelancerId;
     private long categoryId;
@@ -29,21 +30,21 @@ class GigDaoJdbcTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        provider = DbTestSupport.provider();
-        gigs = new GigDaoJdbc(provider);
-        clientId = DbTestSupport.createUser(provider, "CLIENT");
-        freelancerId = DbTestSupport.createUser(provider, "FREELANCER");
-        categoryId = DbTestSupport.createCategory(provider);
-        gigId = DbTestSupport.createGig(provider, clientId, categoryId, 300);
+        db = DbTestSupport.sessionFactory();
+        gigs = new GigDaoHibernate(db);
+        clientId = DbTestSupport.createUser(db, "CLIENT");
+        freelancerId = DbTestSupport.createUser(db, "FREELANCER");
+        categoryId = DbTestSupport.createCategory(db);
+        gigId = DbTestSupport.createGig(db, clientId, categoryId, 300);
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider != null) {
-            DbTestSupport.deleteGig(provider, gigId);
-            DbTestSupport.deleteCategory(provider, categoryId);
-            DbTestSupport.deleteUser(provider, clientId);
-            DbTestSupport.deleteUser(provider, freelancerId);
+        if (db != null) {
+            DbTestSupport.deleteGig(db, gigId);
+            DbTestSupport.deleteCategory(db, categoryId);
+            DbTestSupport.deleteUser(db, clientId);
+            DbTestSupport.deleteUser(db, freelancerId);
         }
     }
 
@@ -114,7 +115,7 @@ class GigDaoJdbcTest {
             assertEquals(GigStatus.OPEN, gig.status());
             assertNull(gig.assignedFreelancerId());
         } finally {
-            DbTestSupport.deleteGig(provider, newId);
+            DbTestSupport.deleteGig(db, newId);
         }
     }
 
@@ -133,7 +134,7 @@ class GigDaoJdbcTest {
 
     @Test
     void listsGigsByClientFreelancerAndStatus() throws Exception {
-        long secondGig = DbTestSupport.createGig(provider, clientId, categoryId, 50);
+        long secondGig = DbTestSupport.createGig(db, clientId, categoryId, 50);
         try {
             gigs.assign(secondGig, freelancerId, GigStatus.ASSIGNED);
 
@@ -145,15 +146,15 @@ class GigDaoJdbcTest {
             assertTrue(gigs.findByStatus(GigStatus.OPEN).stream().noneMatch(g -> g.gigId() == secondGig));
             assertTrue(gigs.findByClientId(freelancerId).isEmpty());
         } finally {
-            DbTestSupport.deleteGig(provider, secondGig);
+            DbTestSupport.deleteGig(db, secondGig);
         }
     }
 
     @Test
     void replaceSkillsKeepsOnlyTheNewSet() throws Exception {
-        long skillA = DbTestSupport.createSkill(provider);
-        long skillB = DbTestSupport.createSkill(provider);
-        long skillC = DbTestSupport.createSkill(provider);
+        long skillA = DbTestSupport.createSkill(db);
+        long skillB = DbTestSupport.createSkill(db);
+        long skillC = DbTestSupport.createSkill(db);
         try {
             gigs.replaceSkills(gigId, List.of(skillA, skillB));
             assertEquals(2, gigs.findSkills(gigId).size());
@@ -166,15 +167,15 @@ class GigDaoJdbcTest {
             gigs.replaceSkills(gigId, List.of());
             assertTrue(gigs.findSkills(gigId).isEmpty());
         } finally {
-            DbTestSupport.deleteSkill(provider, skillA);
-            DbTestSupport.deleteSkill(provider, skillB);
-            DbTestSupport.deleteSkill(provider, skillC);
+            DbTestSupport.deleteSkill(db, skillA);
+            DbTestSupport.deleteSkill(db, skillB);
+            DbTestSupport.deleteSkill(db, skillC);
         }
     }
 
     @Test
     void searchOpenFiltersByKeywordCategoryAndBudget() throws Exception {
-        long otherCategory = DbTestSupport.createCategory(provider);
+        long otherCategory = DbTestSupport.createCategory(db);
         long cheap = gigs.insert(clientId, categoryId, "Quick logo sketch", "Just a sketch", 80, LocalDate.of(2031, 1, 1));
         long other = gigs.insert(clientId, otherCategory, "Essay editing", "Proofread my essay", 500, LocalDate.of(2031, 1, 1));
         try {
@@ -187,9 +188,9 @@ class GigDaoJdbcTest {
             assertTrue(ids(gigs.searchOpen(null, categoryId, null, 100L)).contains(cheap));
             assertTrue(!ids(gigs.searchOpen(null, categoryId, null, 100L)).contains(gigId));
         } finally {
-            DbTestSupport.deleteGig(provider, cheap);
-            DbTestSupport.deleteGig(provider, other);
-            DbTestSupport.deleteCategory(provider, otherCategory);
+            DbTestSupport.deleteGig(db, cheap);
+            DbTestSupport.deleteGig(db, other);
+            DbTestSupport.deleteCategory(db, otherCategory);
         }
     }
 
@@ -210,7 +211,7 @@ class GigDaoJdbcTest {
             assertTrue(!underscoreHits.contains(letters));
         } finally {
             for (long id : new long[] {percent, plain, underscore, letters}) {
-                DbTestSupport.deleteGig(provider, id);
+                DbTestSupport.deleteGig(db, id);
             }
         }
     }
@@ -229,9 +230,9 @@ class GigDaoJdbcTest {
 
     @Test
     void findsTheSkillIdsOfSeveralGigsAtOnce() throws Exception {
-        long skillA = DbTestSupport.createSkill(provider);
-        long skillB = DbTestSupport.createSkill(provider);
-        long second = DbTestSupport.createGig(provider, clientId, categoryId, 10);
+        long skillA = DbTestSupport.createSkill(db);
+        long skillB = DbTestSupport.createSkill(db);
+        long second = DbTestSupport.createGig(db, clientId, categoryId, 10);
         try {
             gigs.replaceSkills(gigId, List.of(skillA, skillB));
             gigs.replaceSkills(second, List.of(skillB));
@@ -243,9 +244,9 @@ class GigDaoJdbcTest {
             assertTrue(!result.containsKey(-1L));
             assertTrue(gigs.findSkillIdsByGigIds(List.of()).isEmpty());
         } finally {
-            DbTestSupport.deleteGig(provider, second);
-            DbTestSupport.deleteSkill(provider, skillA);
-            DbTestSupport.deleteSkill(provider, skillB);
+            DbTestSupport.deleteGig(db, second);
+            DbTestSupport.deleteSkill(db, skillA);
+            DbTestSupport.deleteSkill(db, skillB);
         }
     }
 

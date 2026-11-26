@@ -1,4 +1,4 @@
-package com.campusgigs.dao.jdbc;
+package com.campusgigs.dao.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,9 +26,9 @@ import org.junit.jupiter.api.Test;
  */
 class EscrowServiceIntegrationTest {
 
-    private ConnectionProvider provider;
-    private WalletDaoJdbc wallets;
-    private TransactionDaoJdbc ledger;
+    private SessionFactory db;
+    private WalletDaoHibernate wallets;
+    private TransactionDaoHibernate ledger;
     private EscrowServiceImpl escrow;
     private long clientId;
     private long freelancerId;
@@ -36,23 +37,23 @@ class EscrowServiceIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        provider = DbTestSupport.provider();
-        wallets = new WalletDaoJdbc(provider);
-        ledger = new TransactionDaoJdbc(provider);
-        escrow = new EscrowServiceImpl(wallets, ledger, new TransactionHelper(provider));
-        clientId = DbTestSupport.createUser(provider, "CLIENT");
-        freelancerId = DbTestSupport.createUser(provider, "FREELANCER");
-        categoryId = DbTestSupport.createCategory(provider);
-        gigId = DbTestSupport.createGig(provider, clientId, categoryId, 1000);
+        db = DbTestSupport.sessionFactory();
+        wallets = new WalletDaoHibernate(db);
+        ledger = new TransactionDaoHibernate(db);
+        escrow = new EscrowServiceImpl(wallets, ledger, new HibernateTransactionManager(db));
+        clientId = DbTestSupport.createUser(db, "CLIENT");
+        freelancerId = DbTestSupport.createUser(db, "FREELANCER");
+        categoryId = DbTestSupport.createCategory(db);
+        gigId = DbTestSupport.createGig(db, clientId, categoryId, 1000);
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        if (provider != null) {
-            DbTestSupport.deleteGig(provider, gigId);
-            DbTestSupport.deleteCategory(provider, categoryId);
-            DbTestSupport.deleteUser(provider, clientId);
-            DbTestSupport.deleteUser(provider, freelancerId);
+        if (db != null) {
+            DbTestSupport.deleteGig(db, gigId);
+            DbTestSupport.deleteCategory(db, categoryId);
+            DbTestSupport.deleteUser(db, clientId);
+            DbTestSupport.deleteUser(db, freelancerId);
         }
     }
 
