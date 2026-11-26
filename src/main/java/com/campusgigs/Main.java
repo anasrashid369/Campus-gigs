@@ -49,7 +49,6 @@ import com.campusgigs.presentation.client.ClientSummaryPanel;
 import com.campusgigs.presentation.client.GigFormPanel;
 import com.campusgigs.presentation.common.NotificationBadge;
 import com.campusgigs.presentation.common.ProfilePanel;
-import com.campusgigs.presentation.common.Theme;
 import com.campusgigs.presentation.common.WalletPanel;
 import com.campusgigs.presentation.freelancer.BrowseGigsPanel;
 import com.campusgigs.presentation.freelancer.EarningsPanel;
@@ -111,7 +110,6 @@ public final class Main {
     }
 
     private static void start() {
-        Theme.apply();
         ConnectionProvider db;
         try {
             db = ConnectionProvider.getInstance();
