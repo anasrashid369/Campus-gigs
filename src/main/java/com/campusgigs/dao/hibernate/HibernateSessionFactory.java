@@ -51,15 +51,20 @@ public final class HibernateSessionFactory {
     static SessionFactory build(String url, String user, String password) {
         Configuration configuration = new Configuration()
                 .setProperty("hibernate.connection.driver_class", "com.mysql.cj.jdbc.Driver")
-                .setProperty("hibernate.connection.url", url)
+                .setProperty("hibernate.connection.url", withSessionTimeZone(url))
                 .setProperty("hibernate.connection.username", user)
                 .setProperty("hibernate.connection.password", password)
-                .setProperty("hibernate.connection.pool_size", "5")
                 .setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect")
+                // HikariCP pool: callers wait for a free connection instead of failing when all
+                // are busy (wallet top-ups and escrow holds run in parallel).
+                .setProperty("hibernate.connection.provider_class",
+                        "org.hibernate.hikaricp.internal.HikariCPConnectionProvider")
+                .setProperty("hibernate.hikari.maximumPoolSize", "10")
+                .setProperty("hibernate.hikari.connectionTimeout", "10000")
                 // Do not connect while starting up (empty pool, no metadata lookup): the login
                 // screen opens even if MySQL is down, and the first database call reports it.
-                .setProperty("hibernate.connection.initial_pool_size", "0")
-                .setProperty("hibernate.connection.min_pool_size", "0")
+                .setProperty("hibernate.hikari.minimumIdle", "0")
+                .setProperty("hibernate.hikari.initializationFailTimeout", "-1")
                 .setProperty("hibernate.boot.allow_jdbc_metadata_access", "false")
                 .setProperty("hibernate.hbm2ddl.auto", "none")
                 .setProperty("hibernate.show_sql", "false");
@@ -67,5 +72,17 @@ public final class HibernateSessionFactory {
             configuration.addAnnotatedClass(entity);
         }
         return configuration.buildSessionFactory();
+    }
+
+    /**
+     * Makes the MySQL session use the same time zone the driver converts with. Otherwise a
+     * server running on local time next to serverTimezone=UTC in the URL shifts every
+     * timestamp by the UTC offset, and date filters such as the ledger's miss rows.
+     */
+    static String withSessionTimeZone(String url) {
+        if (url.contains("forceConnectionTimeZoneToSession")) {
+            return url;
+        }
+        return url + (url.contains("?") ? "&" : "?") + "forceConnectionTimeZoneToSession=true";
     }
 }
