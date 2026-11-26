@@ -16,6 +16,7 @@ import com.campusgigs.dao.jdbc.ConnectionProvider;
 import com.campusgigs.dao.jdbc.DisputeDaoJdbc;
 import com.campusgigs.dao.jdbc.FreelancerProfileDaoJdbc;
 import com.campusgigs.dao.jdbc.GigDaoJdbc;
+import com.campusgigs.dao.jdbc.NotificationDaoJdbc;
 import com.campusgigs.dao.jdbc.SettingsDaoJdbc;
 import com.campusgigs.dao.jdbc.SkillDaoJdbc;
 import com.campusgigs.dao.jdbc.TransactionDaoJdbc;
@@ -46,6 +47,7 @@ import com.campusgigs.presentation.auth.RegisterPanel;
 import com.campusgigs.presentation.client.ClientGigsPanel;
 import com.campusgigs.presentation.client.ClientSummaryPanel;
 import com.campusgigs.presentation.client.GigFormPanel;
+import com.campusgigs.presentation.common.NotificationBadge;
 import com.campusgigs.presentation.common.ProfilePanel;
 import com.campusgigs.presentation.common.WalletPanel;
 import com.campusgigs.presentation.freelancer.BrowseGigsPanel;
@@ -64,6 +66,7 @@ import com.campusgigs.service.GigLifecycleService;
 import com.campusgigs.service.GigSearchService;
 import com.campusgigs.service.GigService;
 import com.campusgigs.service.MonitoringService;
+import com.campusgigs.service.NotificationService;
 import com.campusgigs.service.ProfileService;
 import com.campusgigs.service.SettingsService;
 import com.campusgigs.service.TransactionService;
@@ -79,6 +82,7 @@ import com.campusgigs.service.impl.GigLifecycleServiceImpl;
 import com.campusgigs.service.impl.GigSearchServiceImpl;
 import com.campusgigs.service.impl.GigServiceImpl;
 import com.campusgigs.service.impl.MonitoringServiceImpl;
+import com.campusgigs.service.impl.NotificationServiceImpl;
 import com.campusgigs.service.impl.ProfileServiceImpl;
 import com.campusgigs.service.impl.SettingsServiceImpl;
 import com.campusgigs.service.impl.TransactionServiceImpl;
@@ -127,6 +131,9 @@ public final class Main {
         TransactionService transactionService = new TransactionServiceImpl(walletDao, transactionDao);
         GigDao gigDao = new GigDaoJdbc(db);
         DisputeDao disputeDao = new DisputeDaoJdbc(db);
+        NotificationServiceImpl notificationService = new NotificationServiceImpl(new NotificationDaoJdbc(db),
+                userDao, gigDao);
+        notificationService.subscribeTo(EventBus.getInstance());
         EscrowService escrowService = new EscrowServiceImpl(walletDao, transactionDao, transactions);
         GigStateMachine gigStateMachine = new GigStateMachine();
         GigLifecycleService lifecycleService = new GigLifecycleServiceImpl(gigDao, disputeDao, userDao,
@@ -154,7 +161,7 @@ public final class Main {
         frame.addCard(MainFrame.REGISTER_CARD, new RegisterPanel(authService, frame));
         registerScreens(frame, new Services(userService, adminService, profileService, settingsService,
                 walletService, transactionService, earningsService, disputeService, lifecycleService,
-                gigService, applicationService, gigSearchService, monitoringService));
+                gigService, applicationService, gigSearchService, monitoringService, notificationService));
         frame.showCard(MainFrame.LOGIN_CARD);
         frame.setVisible(true);
     }
@@ -165,7 +172,7 @@ public final class Main {
                             EarningsService earnings, DisputeService disputes,
                             GigLifecycleService lifecycle, GigService gigs,
                             ApplicationService applications, GigSearchService search,
-                            MonitoringService monitoring) {
+                            MonitoringService monitoring, NotificationService notifications) {
     }
 
     /** One ranking per sort option; add a class here to offer a new ordering. */
@@ -182,6 +189,7 @@ public final class Main {
     private static void registerScreens(MainFrame frame, Services services) {
         for (Role role : Role.values()) {
             frame.addNavigationItem(role, "My Profile", () -> new ProfilePanel(services.users()));
+            frame.addHeaderWidget(role, () -> new NotificationBadge(services.notifications()));
         }
         frame.addNavigationItem(Role.CLIENT, "Wallet",
                 () -> new WalletPanel(services.wallets(), services.transactions()));
