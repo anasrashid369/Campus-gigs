@@ -99,7 +99,6 @@ public abstract class DashboardPanel extends JPanel {
 
     private static void addNavButton(JPanel nav, String text, Runnable action) {
         JButton button = new JButton(text);
-        Theme.styleNavigationButton(button);
         button.setAlignmentX(Component.LEFT_ALIGNMENT);
         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, button.getPreferredSize().height));
         button.addActionListener(e -> action.run());
