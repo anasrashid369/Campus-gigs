@@ -13,7 +13,7 @@ Group G06, BSE-5B.
 | Item       | Choice                                                     |
 |------------|------------------------------------------------------------|
 | Language   | Java 17, Swing                                             |
-| Database   | MySQL 8.0.16+ through JDBC (`PreparedStatement` only, no ORM) |
+| Database   | MySQL 8.0.16+ through Hibernate ORM 6.6 (HQL with named parameters) |
 | Build      | Maven                                                      |
 | Tests      | JUnit 5, Mockito                                           |
 | Patterns   | State, Strategy, Factory, Observer, DAO, limited Singleton |
@@ -103,7 +103,7 @@ src/main/java/com/campusgigs/
   Main.java                        application entry point
   presentation/                    Swing screens: auth, client, freelancer, admin, common
   service/                         service interfaces; implementations in service/impl
-  dao/                             DAO interfaces and TransactionManager; JDBC classes in dao/jdbc
+  dao/                             DAO interfaces and TransactionManager; Hibernate classes in dao/hibernate
   model/                           domain records and enums matching the schema
   dto/                             data passed from services to screens
   pattern/                         factory, strategy, state and observer (EventBus) code
@@ -118,8 +118,10 @@ src/test/java/com/campusgigs/      tests, mirroring the main packages
 - Presentation -> Service -> DAO. Screens never call a DAO and hold no SQL or
   business rules.
 - Services never import `javax.swing` or `java.sql`; they depend on interfaces
-  (DAOs, `PaymentGateway`, `TransactionManager`), never on JDBC classes.
-- DAOs contain SQL and row mapping only, always with `PreparedStatement`.
+  (DAOs, `PaymentGateway`, `TransactionManager`), never on Hibernate classes.
+- DAOs contain queries and entity-to-record mapping only. Queries are HQL with
+  named parameters, never built from user input. Entities live in
+  `dao.hibernate.entity`; screens and services only see `model/` records and DTOs.
 - Every multi-step database change runs inside `transactions.call(...)`; every
   token movement updates the wallet and writes a ledger row in the same transaction.
 - Screens receive DTOs, never `model/` records, and never a password hash.
@@ -154,7 +156,7 @@ The full step-by-step workflow is in [docs/team_setup.md](docs/team_setup.md).
 
 | Member           | Area                                                         | Main packages / classes |
 |------------------|--------------------------------------------------------------|-------------------------|
-| Muhammad Huzaifa | Database, wallet, escrow, ledger, gig lifecycle, disputes     | `db/01_schema.sql`, `dao.jdbc` base classes, `WalletService`, `TransactionService`, `payment`, gig state machine, `DisputeService` |
+| Muhammad Huzaifa | Database, wallet, escrow, ledger, gig lifecycle, disputes     | `db/01_schema.sql`, `dao.hibernate` base classes, `WalletService`, `TransactionService`, `payment`, gig state machine, `DisputeService` |
 | Abdullah Rasheed | Accounts, Swing shell, gigs, applications, admin monitoring   | `AuthService`, `UserService`, `SessionManager`, `GigService`, `ApplicationService`, main frame and dashboards |
 | Muhammad Anas    | Notifications, admin tools, reviews, profiles, reports, docs  | `EventBus` and events, `NotificationService`, `AdminService`, `SettingsService`, `ReviewService`, `ReportService`, `CsvExporter`, `db/02_seed.sql`, README |
 
