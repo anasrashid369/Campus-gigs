@@ -24,7 +24,24 @@ final class DbTestSupport {
     static SessionFactory sessionFactory() {
         Assumptions.assumeTrue(Files.isRegularFile(Paths.get("config/config.properties")),
                 "config/config.properties not found");
-        return HibernateSessionFactory.getInstance();
+        SessionFactory db = HibernateSessionFactory.getInstance();
+        if (reachable == null) {
+            reachable = canConnect(db);
+        }
+        Assumptions.assumeTrue(reachable, "MySQL is not running or not reachable with config/config.properties");
+        return db;
+    }
+
+    /** Checked once per test run, so a stopped MySQL costs one connection timeout instead of one per test. */
+    private static Boolean reachable;
+
+    private static boolean canConnect(SessionFactory db) {
+        try {
+            queryNumber(db, "SELECT COUNT(*) FROM information_schema.schemata");
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     /** Inserts a throwaway client user and returns its id. */
