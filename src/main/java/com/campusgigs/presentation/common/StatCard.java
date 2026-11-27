@@ -1,30 +1,25 @@
 package com.campusgigs.presentation.common;
 
-import javax.swing.BorderFactory;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import java.awt.BorderLayout;
+import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 
 /** A white card with a small caption and one big figure, used for balances and totals. */
-public class StatCard extends JPanel {
+public class StatCard extends VBox {
 
-    private static final long serialVersionUID = 1L;
     private static final String NO_VALUE = "-";
 
-    private final JLabel value = new JLabel(NO_VALUE);
+    private final Label value = new Label(NO_VALUE);
 
     public StatCard(String caption) {
-        super(new BorderLayout(0, UiConstants.SPACING_SMALL));
-        setBackground(UiConstants.SURFACE);
-        setBorder(BorderFactory.createEmptyBorder(UiConstants.SPACING_LARGE, UiConstants.SPACING_LARGE,
-                UiConstants.SPACING_LARGE, UiConstants.SPACING_LARGE));
-        JLabel title = new JLabel(caption);
-        title.setFont(UiConstants.BODY_FONT);
-        title.setForeground(UiConstants.MUTED_TEXT);
-        value.setFont(UiConstants.TITLE_FONT);
-        value.setForeground(UiConstants.PRIMARY);
-        add(title, BorderLayout.NORTH);
-        add(value, BorderLayout.CENTER);
+        getStyleClass().add("stat-card");
+        Label title = new Label(caption);
+        title.getStyleClass().add("stat-caption");
+        value.getStyleClass().add("stat-value");
+        getChildren().addAll(title, value);
+        setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(this, Priority.ALWAYS);
     }
 
     /** Shows a token amount with thousands separators. */
@@ -35,5 +30,10 @@ public class StatCard extends JPanel {
     /** The text currently shown as the figure. */
     public String getValueText() {
         return value.getText();
+    }
+
+    /** A row of cards sharing the width equally. */
+    public static HBox row(StatCard... cards) {
+        return new HBox(UiConstants.SPACING_LARGE, cards);
     }
 }

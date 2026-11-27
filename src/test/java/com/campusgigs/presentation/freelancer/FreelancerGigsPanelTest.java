@@ -13,6 +13,7 @@ import com.campusgigs.model.Role;
 import com.campusgigs.service.GigLifecycleService;
 import com.campusgigs.service.GigService;
 import com.campusgigs.util.SessionManager;
+import com.campusgigs.presentation.FxTestSupport;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -55,6 +56,7 @@ class FreelancerGigsPanelTest {
 
     @Test
     void loadsTheGigsOfTheLoggedInFreelancer() {
+        FxTestSupport.startToolkit();
         SessionManager.getInstance().setCurrentUser(
                 new UserDto(3, Role.FREELANCER, "Free", "f@example.com", AccountStatus.ACTIVE));
         lenient().when(gigService.listFreelancerGigs(3)).thenReturn(List.of());

@@ -8,17 +8,15 @@ import com.campusgigs.presentation.common.FormLayout;
 import com.campusgigs.presentation.common.UiConstants;
 import com.campusgigs.service.AuthService;
 import com.campusgigs.util.Validators;
-
-import javax.swing.ButtonGroup;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JPasswordField;
-import javax.swing.JRadioButton;
-import javax.swing.JTextField;
-import java.awt.FlowLayout;
-import java.awt.GridBagLayout;
-import java.util.Arrays;
+import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 
 /**
  * Registration screen for clients and freelancers. Gives quick feedback next to each
@@ -26,77 +24,69 @@ import java.util.Arrays;
  */
 public class RegisterPanel extends BasePanel {
 
-    private static final long serialVersionUID = 1L;
-
-    private final transient AuthService authService;
+    private final AuthService authService;
     private final MainFrame frame;
 
-    private final JTextField nameField = new JTextField(UiConstants.TEXT_FIELD_COLUMNS);
-    private final JTextField emailField = new JTextField(UiConstants.TEXT_FIELD_COLUMNS);
-    private final JPasswordField passwordField = new JPasswordField(UiConstants.TEXT_FIELD_COLUMNS);
-    private final JPasswordField confirmField = new JPasswordField(UiConstants.TEXT_FIELD_COLUMNS);
-    private final JRadioButton clientOption = new JRadioButton("Client (I want to hire)");
-    private final JRadioButton freelancerOption = new JRadioButton("Freelancer (I want to work)");
-    private final ButtonGroup roleGroup = new ButtonGroup();
-
-    private final JLabel nameMessage = FormLayout.messageLabel();
-    private final JLabel emailMessage = FormLayout.messageLabel();
-    private final JLabel passwordMessage = FormLayout.messageLabel();
-    private final JLabel confirmMessage = FormLayout.messageLabel();
-    private final JLabel formMessage = FormLayout.messageLabel();
-    private final JButton registerButton = new JButton("Create account");
+    private final TextField nameField = new TextField();
+    private final TextField emailField = new TextField();
+    private final PasswordField passwordField = new PasswordField();
+    private final PasswordField confirmField = new PasswordField();
+    private final RadioButton clientOption = new RadioButton("Client (I want to hire)");
+    private final RadioButton freelancerOption = new RadioButton("Freelancer (I want to work)");
+    private final Label nameMessage = FormLayout.messageLabel();
+    private final Label emailMessage = FormLayout.messageLabel();
+    private final Label passwordMessage = FormLayout.messageLabel();
+    private final Label confirmMessage = FormLayout.messageLabel();
+    private final Label formMessage = FormLayout.messageLabel();
+    private final Button registerButton = new Button("Create account");
 
     public RegisterPanel(AuthService authService, MainFrame frame) {
         this.authService = authService;
         this.frame = frame;
-        setLayout(new GridBagLayout());
+        getStyleClass().add("auth-screen");
 
-        JPanel form = FormLayout.createForm("Create your account");
+        VBox form = FormLayout.createForm("Create your account");
         FormLayout.addField(form, "Full name", nameField, nameMessage);
         FormLayout.addField(form, "Email", emailField, emailMessage);
         FormLayout.addField(form, "Password (8+ characters, a letter and a digit)", passwordField, passwordMessage);
         FormLayout.addField(form, "Confirm password", confirmField, confirmMessage);
         FormLayout.addField(form, "I am a", createRoleChoice(), null);
-        FormLayout.addRow(form, formMessage, UiConstants.SPACING_MEDIUM);
-        FormLayout.addRow(form, registerButton, UiConstants.SPACING_MEDIUM);
-        JButton loginLink = new JButton("Already have an account? Log in");
-        loginLink.setBorderPainted(false);
-        loginLink.setContentAreaFilled(false);
-        loginLink.setForeground(UiConstants.PRIMARY);
-        FormLayout.addRow(form, loginLink, 0);
-        add(form);
+        FormLayout.addRow(form, formMessage);
+        registerButton.getStyleClass().add("primary");
+        registerButton.setMaxWidth(Double.MAX_VALUE);
+        FormLayout.addRow(form, registerButton);
+        Hyperlink loginLink = new Hyperlink("Already have an account? Log in");
+        FormLayout.addRow(form, loginLink);
+        setCenteredContent(form);
 
-        registerButton.addActionListener(e -> register());
-        loginLink.addActionListener(e -> frame.showCard(MainFrame.LOGIN_CARD));
+        registerButton.setOnAction(event -> register());
+        confirmField.setOnAction(event -> register());
+        loginLink.setOnAction(event -> frame.showCard(MainFrame.LOGIN_CARD));
     }
 
-    private JPanel createRoleChoice() {
-        JPanel choice = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        choice.setOpaque(false);
-        for (JRadioButton option : new JRadioButton[] {clientOption, freelancerOption}) {
-            option.setOpaque(false);
-            roleGroup.add(option);
-            choice.add(option);
-        }
+    private HBox createRoleChoice() {
+        ToggleGroup roleGroup = new ToggleGroup();
+        clientOption.setToggleGroup(roleGroup);
+        freelancerOption.setToggleGroup(roleGroup);
         clientOption.setSelected(true);
-        return choice;
+        return new HBox(UiConstants.SPACING_LARGE, clientOption, freelancerOption);
     }
 
     private void register() {
-        String password = readAndClear(passwordField.getPassword());
-        String confirm = readAndClear(confirmField.getPassword());
+        String password = passwordField.getText();
+        String confirm = confirmField.getText();
         if (!inputLooksComplete(password, confirm)) {
             return;
         }
         RegisterRequest request = new RegisterRequest(nameField.getText(), emailField.getText(), password,
                 freelancerOption.isSelected() ? Role.FREELANCER : Role.CLIENT);
-        registerButton.setEnabled(false);
+        registerButton.setDisable(true);
         runInBackground(() -> authService.register(request), user -> {
-            registerButton.setEnabled(true);
+            registerButton.setDisable(false);
             clearForm();
             frame.startSession(user);
         }, error -> {
-            registerButton.setEnabled(true);
+            registerButton.setDisable(false);
             FormLayout.showFailure(this, formMessage, error);
         });
     }
@@ -110,27 +100,25 @@ public class RegisterPanel extends BasePanel {
         ok &= setMessage(passwordMessage, Validators.hasMinLength(password, AuthService.MIN_PASSWORD_LENGTH)
                 ? null : "At least " + AuthService.MIN_PASSWORD_LENGTH + " characters");
         ok &= setMessage(confirmMessage, password.equals(confirm) ? null : "Passwords do not match");
-        formMessage.setText(FormLayout.NO_MESSAGE);
+        FormLayout.clear(formMessage);
         return ok;
     }
 
     /** Sets the message (or clears it when null) and returns true when there was none. */
-    private static boolean setMessage(JLabel label, String message) {
-        label.setText(message == null ? FormLayout.NO_MESSAGE : message);
+    private static boolean setMessage(Label label, String message) {
+        if (message == null) {
+            FormLayout.clear(label);
+        } else {
+            FormLayout.showError(label, message);
+        }
         return message == null;
     }
 
     private void clearForm() {
-        nameField.setText("");
-        emailField.setText("");
-        passwordField.setText("");
-        confirmField.setText("");
+        nameField.clear();
+        emailField.clear();
+        passwordField.clear();
+        confirmField.clear();
         clientOption.setSelected(true);
-    }
-
-    private static String readAndClear(char[] typed) {
-        String value = new String(typed);
-        Arrays.fill(typed, '\0');
-        return value;
     }
 }

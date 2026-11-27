@@ -4,20 +4,20 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import com.campusgigs.dto.UserDto;
 import com.campusgigs.model.AccountStatus;
 import com.campusgigs.model.Role;
+import com.campusgigs.presentation.FxTestSupport;
 import com.campusgigs.presentation.MainFrame;
 import com.campusgigs.presentation.admin.AdminDashboardPanel;
 import com.campusgigs.presentation.client.ClientDashboardPanel;
+import com.campusgigs.presentation.common.DashboardPanel;
 import com.campusgigs.presentation.freelancer.FreelancerDashboardPanel;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.GraphicsEnvironment;
-import javax.swing.AbstractButton;
-import javax.swing.JPanel;
+import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.control.ButtonBase;
+import javafx.scene.layout.Pane;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +27,7 @@ class DashboardFactoryTest {
 
     @BeforeEach
     void setUp() {
-        assumeFalse(GraphicsEnvironment.isHeadless(), "needs a display");
+        FxTestSupport.startToolkit();
         frame = new MainFrame();
     }
 
@@ -44,10 +44,10 @@ class DashboardFactoryTest {
 
     @Test
     void dashboardShowsOnlyTheNavigationItemsOfItsRole() {
-        frame.addNavigationItem(Role.CLIENT, "My Wallet", JPanel::new);
-        frame.addNavigationItem(Role.ADMIN, "Users", JPanel::new);
+        frame.addNavigationItem(Role.CLIENT, "My Wallet", Pane::new);
+        frame.addNavigationItem(Role.ADMIN, "Users", Pane::new);
 
-        JPanel client = DashboardFactory.create(user(Role.CLIENT), frame);
+        DashboardPanel client = DashboardFactory.create(user(Role.CLIENT), frame);
 
         assertTrue(hasButton(client, "My Wallet"));
         assertTrue(hasButton(client, "Logout"));
@@ -60,12 +60,12 @@ class DashboardFactoryTest {
         assertThrows(NullPointerException.class, () -> DashboardFactory.create(user(Role.CLIENT), null));
     }
 
-    private static boolean hasButton(Container container, String text) {
-        for (Component child : container.getComponents()) {
-            if (child instanceof AbstractButton button && text.equals(button.getText())) {
+    private static boolean hasButton(Parent parent, String text) {
+        for (Node child : parent.getChildrenUnmodifiable()) {
+            if (child instanceof ButtonBase button && text.equals(button.getText())) {
                 return true;
             }
-            if (child instanceof Container inner && hasButton(inner, text)) {
+            if (child instanceof Parent inner && hasButton(inner, text)) {
                 return true;
             }
         }

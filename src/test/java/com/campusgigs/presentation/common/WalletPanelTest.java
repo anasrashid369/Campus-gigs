@@ -16,6 +16,7 @@ import com.campusgigs.model.Role;
 import com.campusgigs.service.TransactionService;
 import com.campusgigs.service.WalletService;
 import com.campusgigs.util.SessionManager;
+import com.campusgigs.presentation.FxTestSupport;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +48,7 @@ class WalletPanelTest {
 
     /** Builds the panel and waits until its first background load has finished, so stubbing is safe. */
     private WalletPanel openPanel() {
+        FxTestSupport.startToolkit();
         WalletPanel panel = new WalletPanel(walletService, transactionService);
         verify(walletService, timeout(3000)).getWallet(USER_ID);
         verify(transactionService, timeout(3000)).getHistory(USER_ID);

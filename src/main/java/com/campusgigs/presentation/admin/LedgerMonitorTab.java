@@ -10,60 +10,52 @@ import com.campusgigs.presentation.common.TokenFormat;
 import com.campusgigs.presentation.common.UiConstants;
 import com.campusgigs.service.MonitoringService;
 import com.campusgigs.util.SessionManager;
-
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-import java.awt.BorderLayout;
-import java.awt.FlowLayout;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
+import javafx.scene.control.Label;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.VBox;
 
 /** The token ledger of all wallets, filtered by type and by a range of days (F9). */
 class LedgerMonitorTab extends BasePanel {
 
-    private static final long serialVersionUID = 1L;
     private static final String NO_VALUE = "-";
 
-    private final transient MonitoringService monitoringService;
-    private final JComboBox<Choice<TransactionType>> typeBox = new JComboBox<>();
-    private final JTextField fromField = new JTextField(9);
-    private final JTextField toField = new JTextField(9);
-    private final JLabel messageLabel = FormLayout.messageLabel();
+    private final MonitoringService monitoringService;
+    private final ComboBox<Choice<TransactionType>> typeBox = new ComboBox<>();
+    private final DatePicker fromPicker = FormLayout.isoDatePicker();
+    private final DatePicker toPicker = FormLayout.isoDatePicker();
+    private final Label messageLabel = FormLayout.messageLabel();
     private final MonitorTable<LedgerEntryDto> table;
 
     LedgerMonitorTab(MonitoringService monitoringService) {
         this.monitoringService = monitoringService;
-        setLayout(new BorderLayout(0, UiConstants.SPACING_MEDIUM));
-        typeBox.addItem(new Choice<>("All types", null));
+        typeBox.getItems().add(new Choice<>("All types", null));
         for (TransactionType type : TransactionType.values()) {
-            typeBox.addItem(new Choice<>(TokenFormat.typeLabel(type), type));
+            typeBox.getItems().add(new Choice<>(TokenFormat.typeLabel(type), type));
         }
+        typeBox.getSelectionModel().selectFirst();
+        fromPicker.setPrefWidth(140);
+        toPicker.setPrefWidth(140);
         table = new MonitorTable<>("Ledger (latest 500 entries)",
                 List.of("Date", "User", "Type", "Amount", "Gig", "Reference"), LedgerMonitorTab::toCells, this::load);
 
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, UiConstants.SPACING_MEDIUM, 0));
-        bar.setOpaque(false);
-        bar.add(new JLabel("Type:"));
-        bar.add(typeBox);
-        bar.add(new JLabel("From (yyyy-MM-dd):"));
-        bar.add(fromField);
-        bar.add(new JLabel("To:"));
-        bar.add(toField);
-        JButton show = new JButton("Show");
-        show.addActionListener(e -> load());
-        bar.add(show);
-        JPanel top = new JPanel();
-        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
-        top.setOpaque(false);
-        top.add(bar);
-        top.add(messageLabel);
-        add(top, BorderLayout.NORTH);
-        add(table, BorderLayout.CENTER);
+        Button show = new Button("Show");
+        show.getStyleClass().add("primary");
+        show.setOnAction(event -> load());
+        FlowPane bar = new FlowPane(UiConstants.SPACING_MEDIUM, UiConstants.SPACING_MEDIUM, new Label("Type:"),
+                typeBox, new Label("From:"), fromPicker, new Label("To:"), toPicker, show);
+        bar.setAlignment(Pos.CENTER_LEFT);
+        VBox top = new VBox(UiConstants.SPACING_SMALL, bar, messageLabel);
+        setMargin(top, new Insets(0, 0, UiConstants.SPACING_MEDIUM, 0));
+        setTop(top);
+        setCenter(table);
         load();
     }
 
@@ -99,16 +91,15 @@ class LedgerMonitorTab extends BasePanel {
         LocalDate from;
         LocalDate to;
         try {
-            from = parseDay(fromField.getText());
-            to = parseDay(toField.getText());
+            from = parseDay(fromPicker.getEditor().getText());
+            to = parseDay(toPicker.getEditor().getText());
         } catch (ValidationException e) {
             FormLayout.showFailure(this, messageLabel, e);
             return;
         }
-        messageLabel.setText(FormLayout.NO_MESSAGE);
+        FormLayout.clear(messageLabel);
         long adminId = SessionManager.getInstance().getCurrentUser().userId();
-        @SuppressWarnings("unchecked")
-        Choice<TransactionType> chosen = (Choice<TransactionType>) typeBox.getSelectedItem();
+        Choice<TransactionType> chosen = typeBox.getValue();
         TransactionType type = chosen == null ? null : chosen.value();
         runInBackground(() -> monitoringService.listLedger(adminId, type, from, to), table::show,
                 error -> FormLayout.showFailure(this, messageLabel, error));

@@ -11,26 +11,20 @@ import com.campusgigs.presentation.common.UiConstants;
 import com.campusgigs.service.GigService;
 import com.campusgigs.service.ProfileService;
 import com.campusgigs.util.SessionManager;
-
-import javax.swing.DefaultListCellRenderer;
-import javax.swing.DefaultListModel;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
-import java.awt.Component;
-import java.awt.GridBagLayout;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.SelectionMode;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 
 /**
  * Form to post a new gig (F14) or to change an open one (F15). Numbers and dates are read on
@@ -39,26 +33,23 @@ import java.util.stream.IntStream;
  */
 public class GigFormPanel extends BasePanel {
 
-    private static final long serialVersionUID = 1L;
-
     /** Everything the form needs from the services, loaded in one background call. */
     private record Loaded(List<CategoryDto> categories, List<SkillDto> skills, List<SkillDto> chosenSkills) {
     }
 
-    private final transient GigService gigService;
-    private final transient ProfileService profileService;
-    private final transient GigDto existing;
-    private final transient Runnable onSaved;
+    private final GigService gigService;
+    private final ProfileService profileService;
+    private final GigDto existing;
+    private final Runnable onSaved;
 
-    private final JTextField titleField = new JTextField(UiConstants.TEXT_FIELD_COLUMNS + 12);
-    private final JTextArea descriptionArea = new JTextArea(6, UiConstants.TEXT_FIELD_COLUMNS + 12);
-    private final JComboBox<CategoryDto> categoryBox = new JComboBox<>();
-    private final JTextField budgetField = new JTextField(UiConstants.TEXT_FIELD_COLUMNS);
-    private final JTextField deadlineField = new JTextField(UiConstants.TEXT_FIELD_COLUMNS);
-    private final DefaultListModel<SkillDto> skillsModel = new DefaultListModel<>();
-    private final JList<SkillDto> skillsList = new JList<>(skillsModel);
-    private final JLabel messageLabel = FormLayout.messageLabel();
-    private final JButton saveButton = new JButton("Post gig");
+    private final TextField titleField = new TextField();
+    private final TextArea descriptionArea = new TextArea();
+    private final ComboBox<CategoryDto> categoryBox = new ComboBox<>();
+    private final TextField budgetField = new TextField();
+    private final DatePicker deadlinePicker = FormLayout.isoDatePicker();
+    private final ListView<SkillDto> skillsList = new ListView<>();
+    private final Label messageLabel = FormLayout.messageLabel();
+    private final Button saveButton = new Button("Post gig");
 
     /** A form for posting a new gig. */
     public GigFormPanel(GigService gigService, ProfileService profileService) {
@@ -69,50 +60,43 @@ public class GigFormPanel extends BasePanel {
      * A form for changing an open gig.
      *
      * @param existing the gig to change, or null to post a new one
-     * @param onSaved  called after a successful save, for example to close the dialog the form is shown in
+     * @param onSaved  called after a successful save, for example to close the window the form is shown in
      */
     public GigFormPanel(GigService gigService, ProfileService profileService, GigDto existing, Runnable onSaved) {
         this.gigService = gigService;
         this.profileService = profileService;
         this.existing = existing;
         this.onSaved = onSaved;
-        setLayout(new GridBagLayout());
 
-        descriptionArea.setLineWrap(true);
-        descriptionArea.setWrapStyleWord(true);
-        skillsList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-        skillsList.setVisibleRowCount(6);
-        categoryBox.setRenderer(new DefaultListCellRenderer() {
-            private static final long serialVersionUID = 1L;
+        descriptionArea.setWrapText(true);
+        descriptionArea.setPrefRowCount(5);
+        categoryBox.setMaxWidth(Double.MAX_VALUE);
+        FormLayout.showItemsAs(categoryBox, CategoryDto::name);
+        deadlinePicker.setMaxWidth(Double.MAX_VALUE);
+        skillsList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        skillsList.setPrefHeight(150);
 
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
-                                                                  boolean selected, boolean focus) {
-                return super.getListCellRendererComponent(list,
-                        value instanceof CategoryDto category ? category.name() : value, index, selected, focus);
-            }
-        });
-
-        JPanel form = FormLayout.createForm(existing == null ? "Post a gig" : "Change gig");
+        VBox form = FormLayout.createForm(existing == null ? "Post a gig" : "Change gig");
+        form.setPrefWidth(UiConstants.WIDE_FORM_WIDTH);
         FormLayout.addField(form, "Title (3 - 100 characters)", titleField, null);
-        FormLayout.addField(form, "Description (10 - 2000 characters)", new JScrollPane(descriptionArea), null);
+        FormLayout.addField(form, "Description (10 - 2000 characters)", descriptionArea, null);
         FormLayout.addField(form, "Category", categoryBox, null);
         FormLayout.addField(form, "Budget in tokens (1 - 100000)", budgetField, null);
-        FormLayout.addField(form, "Deadline (yyyy-MM-dd, for example 2026-12-31)", deadlineField, null);
-        FormLayout.addField(form, "Skills needed (up to 10, Ctrl+click to choose several)",
-                new JScrollPane(skillsList), null);
-        FormLayout.addRow(form, messageLabel, UiConstants.SPACING_MEDIUM);
-        FormLayout.addRow(form, saveButton, 0);
-        add(form);
+        FormLayout.addField(form, "Deadline (pick a day or type yyyy-MM-dd)", deadlinePicker, null);
+        FormLayout.addField(form, "Skills needed (up to 10, Ctrl+click to choose several)", skillsList, null);
+        FormLayout.addRow(form, messageLabel);
+        saveButton.getStyleClass().add("primary");
+        FormLayout.addRow(form, saveButton);
+        setCenteredContent(form);
 
         if (existing != null) {
             saveButton.setText("Save changes");
             titleField.setText(existing.title());
             descriptionArea.setText(existing.description());
             budgetField.setText(String.valueOf(existing.budget()));
-            deadlineField.setText(existing.deadline().toString());
+            deadlinePicker.setValue(existing.deadline());
         }
-        saveButton.addActionListener(e -> save());
+        saveButton.setOnAction(event -> save());
         load();
     }
 
@@ -143,76 +127,77 @@ public class GigFormPanel extends BasePanel {
     }
 
     private void load() {
-        saveButton.setEnabled(false);
+        saveButton.setDisable(true);
         runInBackground(() -> new Loaded(gigService.getActiveCategories(), profileService.getAvailableSkills(),
                 existing == null ? List.of() : gigService.getGigSkills(existing.gigId())), loaded -> {
-            categoryBox.removeAllItems();
-            loaded.categories().forEach(categoryBox::addItem);
-            skillsModel.clear();
-            loaded.skills().forEach(skillsModel::addElement);
+            categoryBox.getItems().setAll(loaded.categories());
+            skillsList.getItems().setAll(loaded.skills());
             if (existing != null) {
                 selectCategory(existing.categoryId());
                 selectSkills(loaded.chosenSkills());
+            } else {
+                categoryBox.getSelectionModel().selectFirst();
             }
-            saveButton.setEnabled(true);
+            saveButton.setDisable(false);
         });
     }
 
     private void selectCategory(long categoryId) {
-        for (int i = 0; i < categoryBox.getItemCount(); i++) {
-            if (categoryBox.getItemAt(i).categoryId() == categoryId) {
-                categoryBox.setSelectedIndex(i);
-                return;
-            }
-        }
+        categoryBox.getItems().stream()
+                .filter(category -> category.categoryId() == categoryId)
+                .findFirst()
+                .ifPresent(categoryBox::setValue);
     }
 
     private void selectSkills(List<SkillDto> chosen) {
         Set<Long> ids = chosen.stream().map(SkillDto::skillId).collect(Collectors.toSet());
-        skillsList.setSelectedIndices(IntStream.range(0, skillsModel.size())
-                .filter(i -> ids.contains(skillsModel.get(i).skillId()))
-                .toArray());
+        skillsList.getSelectionModel().clearSelection();
+        for (SkillDto skill : skillsList.getItems()) {
+            if (ids.contains(skill.skillId())) {
+                skillsList.getSelectionModel().select(skill);
+            }
+        }
     }
 
     private void save() {
         GigRequest request;
         try {
-            request = parseRequest(titleField.getText(), descriptionArea.getText(),
-                    (CategoryDto) categoryBox.getSelectedItem(), budgetField.getText(), deadlineField.getText(),
-                    skillsList.getSelectedValuesList());
+            request = parseRequest(titleField.getText(), descriptionArea.getText(), categoryBox.getValue(),
+                    budgetField.getText(), deadlinePicker.getEditor().getText(),
+                    List.copyOf(skillsList.getSelectionModel().getSelectedItems()));
         } catch (ValidationException e) {
             FormLayout.showFailure(this, messageLabel, e);
             return;
         }
         long clientId = SessionManager.getInstance().getCurrentUser().userId();
-        saveButton.setEnabled(false);
+        saveButton.setDisable(true);
         runInBackground(() -> existing == null
                         ? gigService.createGig(clientId, request)
                         : gigService.updateGig(clientId, existing.gigId(), request),
                 saved -> {
-                    saveButton.setEnabled(true);
-                    messageLabel.setForeground(UiConstants.SUCCESS);
+                    saveButton.setDisable(false);
                     if (existing == null) {
                         clearForm();
-                        messageLabel.setText("Gig posted. Find it under My Gigs.");
+                        FormLayout.showSuccess(messageLabel, "Gig posted. Find it under My Gigs.");
                     } else {
-                        messageLabel.setText("Gig saved");
+                        FormLayout.showSuccess(messageLabel, "Gig saved");
                     }
                     onSaved.run();
                 }, error -> {
-                    saveButton.setEnabled(true);
+                    saveButton.setDisable(false);
                     FormLayout.showFailure(this, messageLabel, error);
                 });
     }
 
     private void clearForm() {
-        titleField.setText("");
-        descriptionArea.setText("");
-        budgetField.setText("");
-        deadlineField.setText("");
-        skillsList.clearSelection();
-        if (categoryBox.getItemCount() > 0) {
-            categoryBox.setSelectedIndex(0);
+        titleField.clear();
+        descriptionArea.clear();
+        budgetField.clear();
+        deadlinePicker.setValue(null);
+        deadlinePicker.getEditor().clear();
+        skillsList.getSelectionModel().clearSelection();
+        if (!categoryBox.getItems().isEmpty()) {
+            categoryBox.getSelectionModel().selectFirst();
         }
     }
 }

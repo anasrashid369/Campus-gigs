@@ -2,21 +2,23 @@ package com.campusgigs.presentation.admin;
 
 import com.campusgigs.presentation.common.BasePanel;
 import com.campusgigs.service.MonitoringService;
-
-import javax.swing.JTabbedPane;
-import java.awt.BorderLayout;
+import javafx.scene.Node;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 
 /** Admin monitoring (F9): tabs for all gigs, all applications and the token ledger. */
 public class MonitoringPanel extends BasePanel {
 
-    private static final long serialVersionUID = 1L;
-
     public MonitoringPanel(MonitoringService monitoringService) {
-        setLayout(new BorderLayout());
-        JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("Gigs", new GigsMonitorTab(monitoringService));
-        tabs.addTab("Applications", new ApplicationsMonitorTab(monitoringService));
-        tabs.addTab("Ledger", new LedgerMonitorTab(monitoringService));
-        add(tabs, BorderLayout.CENTER);
+        TabPane tabs = new TabPane(
+                tab("Gigs", new GigsMonitorTab(monitoringService)),
+                tab("Applications", new ApplicationsMonitorTab(monitoringService)),
+                tab("Ledger", new LedgerMonitorTab(monitoringService)));
+        tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        setCenter(tabs);
+    }
+
+    private static Tab tab(String title, Node content) {
+        return new Tab(title, content);
     }
 }

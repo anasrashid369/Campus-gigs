@@ -1,13 +1,14 @@
 package com.campusgigs.presentation.common;
 
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JLabel;
-import javax.swing.JTextArea;
-import javax.swing.BoxLayout;
-import java.awt.Component;
 import java.util.Optional;
+import javafx.event.ActionEvent;
+import javafx.scene.Node;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
+import javafx.scene.layout.VBox;
 
 /**
  * A small dialog that asks for a longer text, for example a proposal or the reason for a dispute.
@@ -16,43 +17,39 @@ import java.util.Optional;
 public final class TextPrompt {
 
     private static final int ROWS = 7;
-    private static final int COLUMNS = 40;
+    private static final int COLUMNS = 44;
 
     private TextPrompt() {
     }
 
     /**
-     * Asks for a text until the length is acceptable or the user cancels.
+     * Asks for a text; the dialog stays open until the length is acceptable or the user cancels.
      *
      * @return the trimmed text, or empty if the user cancelled
      */
-    public static Optional<String> ask(Component parent, String title, String label, int minLength, int maxLength) {
-        String problem = null;
-        String previous = "";
-        while (true) {
-            JTextArea area = new JTextArea(previous, ROWS, COLUMNS);
-            area.setLineWrap(true);
-            area.setWrapStyleWord(true);
-            JPanel content = new JPanel();
-            content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-            content.add(new JLabel(label));
-            content.add(new JScrollPane(area));
-            if (problem != null) {
-                JLabel error = new JLabel(problem);
-                error.setForeground(UiConstants.ERROR);
-                content.add(error);
+    public static Optional<String> ask(Node owner, String title, String label, int minLength, int maxLength) {
+        TextArea area = new TextArea();
+        area.setWrapText(true);
+        area.setPrefRowCount(ROWS);
+        area.setPrefColumnCount(COLUMNS);
+        Label caption = new Label(label);
+        caption.setWrapText(true);
+        Label problem = FormLayout.messageLabel();
+
+        Dialog<String> dialog = new Dialog<>();
+        dialog.getDialogPane().setContent(new VBox(UiConstants.SPACING_MEDIUM, caption, area, problem));
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        Button ok = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+        ok.addEventFilter(ActionEvent.ACTION, event -> {
+            String message = problem(area.getText(), minLength, maxLength);
+            if (message != null) {
+                FormLayout.showError(problem, message);
+                event.consume();
             }
-            int answer = JOptionPane.showConfirmDialog(parent, content, title, JOptionPane.OK_CANCEL_OPTION,
-                    JOptionPane.PLAIN_MESSAGE);
-            if (answer != JOptionPane.OK_OPTION) {
-                return Optional.empty();
-            }
-            previous = area.getText();
-            problem = problem(previous, minLength, maxLength);
-            if (problem == null) {
-                return Optional.of(previous.trim());
-            }
-        }
+        });
+        dialog.setResultConverter(button -> button == ButtonType.OK ? area.getText().trim() : null);
+        Dialogs.prepare(dialog, owner, title);
+        return dialog.showAndWait();
     }
 
     /**

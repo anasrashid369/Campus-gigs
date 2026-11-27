@@ -1,6 +1,6 @@
 # Campus Gigs
 
-Campus Gigs is a Java Swing desktop marketplace where students post small paid
+Campus Gigs is a JavaFX desktop marketplace where students post small paid
 tasks (gigs) and other students apply to do them. Payment uses **simulated
 tokens**: the client's tokens are held in escrow when a freelancer is hired and
 released when the work is approved, with every movement written to a ledger.
@@ -12,7 +12,7 @@ Group G06, BSE-5B.
 
 | Item       | Choice                                                     |
 |------------|------------------------------------------------------------|
-| Language   | Java 17, Swing                                             |
+| Language   | Java 17, JavaFX 21 (screens styled with one CSS file)      |
 | Database   | MySQL 8.0.16+ through Hibernate ORM 6.6 (HQL with named parameters) |
 | Build      | Maven                                                      |
 | Tests      | JUnit 5, Mockito                                           |
@@ -101,7 +101,8 @@ db/changes/                        numbered change scripts, e.g. 003_add_dispute
 docs/                              proposal, implementation plan, team setup and task guides
 src/main/java/com/campusgigs/
   Main.java                        application entry point
-  presentation/                    Swing screens: auth, client, freelancer, admin, common
+  presentation/                    JavaFX screens: auth, client, freelancer, admin, common
+src/main/resources/com/campusgigs/presentation/campus-gigs.css   colours, fonts and spacing of every screen
   service/                         service interfaces; implementations in service/impl
   dao/                             DAO interfaces and TransactionManager; Hibernate classes in dao/hibernate
   model/                           domain records and enums matching the schema
@@ -117,7 +118,7 @@ src/test/java/com/campusgigs/      tests, mirroring the main packages
 
 - Presentation -> Service -> DAO. Screens never call a DAO and hold no SQL or
   business rules.
-- Services never import `javax.swing` or `java.sql`; they depend on interfaces
+- Services never import `javafx` or `java.sql`; they depend on interfaces
   (DAOs, `PaymentGateway`, `TransactionManager`), never on Hibernate classes.
 - DAOs contain queries and entity-to-record mapping only. Queries are HQL with
   named parameters, never built from user input. Entities live in
@@ -126,8 +127,9 @@ src/test/java/com/campusgigs/      tests, mirroring the main packages
   token movement updates the wallet and writes a ledger row in the same transaction.
 - Screens receive DTOs, never `model/` records, and never a password hash.
 - Role checks happen in the service, not only by hiding buttons.
-- Swing: build components on the Event Dispatch Thread and run database calls in a
-  `SwingWorker`.
+- JavaFX: change screens only on the JavaFX Application Thread and run database calls
+  with `BasePanel.runInBackground(...)`. Style with CSS classes from `campus-gigs.css`,
+  not colours or fonts in Java code.
 - Services publish events with `EventBus.getInstance().publish(...)` only after their
   transaction has committed. Event names: `ApplicationSubmitted`,
   `ApplicationWithdrawn`, `FreelancerHired`, `WorkSubmitted`, `WorkApproved`,
@@ -157,7 +159,7 @@ The full step-by-step workflow is in [docs/team_setup.md](docs/team_setup.md).
 | Member           | Area                                                         | Main packages / classes |
 |------------------|--------------------------------------------------------------|-------------------------|
 | Muhammad Huzaifa | Database, wallet, escrow, ledger, gig lifecycle, disputes     | `db/01_schema.sql`, `dao.hibernate` base classes, `WalletService`, `TransactionService`, `payment`, gig state machine, `DisputeService` |
-| Abdullah Rasheed | Accounts, Swing shell, gigs, applications, admin monitoring   | `AuthService`, `UserService`, `SessionManager`, `GigService`, `ApplicationService`, main frame and dashboards |
+| Abdullah Rasheed | Accounts, UI shell, gigs, applications, admin monitoring   | `AuthService`, `UserService`, `SessionManager`, `GigService`, `ApplicationService`, main frame and dashboards |
 | Muhammad Anas    | Notifications, admin tools, reviews, profiles, reports, docs  | `EventBus` and events, `NotificationService`, `AdminService`, `SettingsService`, `ReviewService`, `ReportService`, `CsvExporter`, `db/02_seed.sql`, README |
 
 ## Troubleshooting

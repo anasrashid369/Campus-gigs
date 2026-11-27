@@ -9,40 +9,36 @@ import com.campusgigs.presentation.common.TokenFormat;
 import com.campusgigs.presentation.common.UiConstants;
 import com.campusgigs.service.MonitoringService;
 import com.campusgigs.util.SessionManager;
-
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import java.awt.BorderLayout;
-import java.awt.FlowLayout;
 import java.util.List;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
 
 /** All applications on the platform, filtered by status (F9). */
 class ApplicationsMonitorTab extends BasePanel {
 
-    private static final long serialVersionUID = 1L;
-
-    private final transient MonitoringService monitoringService;
-    private final JComboBox<Choice<ApplicationStatus>> statusBox = new JComboBox<>();
+    private final MonitoringService monitoringService;
+    private final ComboBox<Choice<ApplicationStatus>> statusBox = new ComboBox<>();
     private final MonitorTable<ApplicationDto> table;
 
     ApplicationsMonitorTab(MonitoringService monitoringService) {
         this.monitoringService = monitoringService;
-        setLayout(new BorderLayout(0, UiConstants.SPACING_MEDIUM));
-        statusBox.addItem(new Choice<>("All statuses", null));
+        statusBox.getItems().add(new Choice<>("All statuses", null));
         for (ApplicationStatus status : ApplicationStatus.values()) {
-            statusBox.addItem(new Choice<>(StatusFormat.applicationStatus(status), status));
+            statusBox.getItems().add(new Choice<>(StatusFormat.applicationStatus(status), status));
         }
-        statusBox.addActionListener(e -> load());
+        statusBox.getSelectionModel().selectFirst();
+        statusBox.setOnAction(event -> load());
         table = new MonitorTable<>("Applications", List.of("Gig", "Freelancer", "Application", "Gig status", "Sent"),
                 ApplicationsMonitorTab::toCells, this::load);
 
-        JPanel filter = new JPanel(new FlowLayout(FlowLayout.LEFT, UiConstants.SPACING_MEDIUM, 0));
-        filter.setOpaque(false);
-        filter.add(new JLabel("Status:"));
-        filter.add(statusBox);
-        add(filter, BorderLayout.NORTH);
-        add(table, BorderLayout.CENTER);
+        HBox filter = new HBox(UiConstants.SPACING_MEDIUM, new Label("Status:"), statusBox);
+        filter.setAlignment(Pos.CENTER_LEFT);
+        setMargin(filter, new Insets(0, 0, UiConstants.SPACING_MEDIUM, 0));
+        setTop(filter);
+        setCenter(table);
         load();
     }
 
@@ -59,8 +55,7 @@ class ApplicationsMonitorTab extends BasePanel {
 
     private void load() {
         long adminId = SessionManager.getInstance().getCurrentUser().userId();
-        @SuppressWarnings("unchecked")
-        Choice<ApplicationStatus> chosen = (Choice<ApplicationStatus>) statusBox.getSelectedItem();
+        Choice<ApplicationStatus> chosen = statusBox.getValue();
         ApplicationStatus status = chosen == null ? null : chosen.value();
         runInBackground(() -> monitoringService.listApplications(adminId, status), table::show);
     }
