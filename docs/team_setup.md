@@ -99,13 +99,13 @@ return transactions.call(() -> {
 
 ## 4. The layering rules (strict)
 
-- Presentation (Swing) -> Service -> DAO. Presentation never calls a DAO and has no SQL or business rules.
-- Services never import `javax.swing` or `java.sql`. DAOs hold SQL and row mapping only.
+- Presentation (JavaFX) -> Service -> DAO. Presentation never calls a DAO and has no SQL or business rules.
+- Services never import `javafx` or `java.sql`. DAOs hold SQL and row mapping only.
 - Services depend on interfaces (DAO, `PaymentGateway`, `TransactionManager`), never on Hibernate classes.
 - Layers pass DTOs (`dto/`), not `model/` records, to the screens. Never put `passwordHash` in a DTO.
 - HQL with named parameters (`:name`) for every query, never values glued into the query string. Locks use `LockModeType.PESSIMISTIC_WRITE` (SELECT ... FOR UPDATE).
 - Every multi-step database change runs inside `transactions.call(...)`.
-- Swing: build components on the Event Dispatch Thread; run database calls in a `SwingWorker`; action listeners only collect input, call a service, and show the result.
+- JavaFX: change screens only on the JavaFX Application Thread; run database calls with `BasePanel.runInBackground(...)`; button handlers only collect input, call a service, and show the result. Colours, fonts and spacing come from CSS classes in `src/main/resources/com/campusgigs/presentation/campus-gigs.css`; pop-ups go through `Dialogs`, tables through `TablePanel`, forms through `FormLayout`.
 - Check the caller's role inside the service, not only by hiding buttons.
 - No `System.out.println`, no commented-out code, no unused code in committed files.
 - JavaDoc on public service and DAO interfaces. JUnit tests for every service you own.
