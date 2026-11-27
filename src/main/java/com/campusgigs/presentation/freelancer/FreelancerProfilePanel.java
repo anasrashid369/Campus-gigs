@@ -7,72 +7,63 @@ import com.campusgigs.presentation.common.FormLayout;
 import com.campusgigs.presentation.common.UiConstants;
 import com.campusgigs.service.ProfileService;
 import com.campusgigs.util.SessionManager;
-
-import javax.swing.DefaultListModel;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
-import java.awt.GridBagLayout;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.SelectionMode;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 
 /** The freelancer's own profile (F21): biography, skills and portfolio links. */
 public class FreelancerProfilePanel extends BasePanel {
-
-    private static final long serialVersionUID = 1L;
 
     /** Everything the screen needs, loaded in one background call. */
     private record Loaded(List<SkillDto> skills, FreelancerProfileDto profile) {
     }
 
-    private final transient ProfileService profileService;
+    private final ProfileService profileService;
 
-    private final JTextArea biographyArea = new JTextArea(6, UiConstants.TEXT_FIELD_COLUMNS + 12);
-    private final DefaultListModel<SkillDto> skillsModel = new DefaultListModel<>();
-    private final JList<SkillDto> skillsList = new JList<>(skillsModel);
-    private final JTextField linksField = new JTextField(UiConstants.TEXT_FIELD_COLUMNS + 12);
-    private final JLabel messageLabel = FormLayout.messageLabel();
-    private final JButton saveButton = new JButton("Save profile");
+    private final TextArea biographyArea = new TextArea();
+    private final ListView<SkillDto> skillsList = new ListView<>();
+    private final TextField linksField = new TextField();
+    private final Label messageLabel = FormLayout.messageLabel();
+    private final Button saveButton = new Button("Save profile");
 
     public FreelancerProfilePanel(ProfileService profileService) {
         this.profileService = profileService;
-        setLayout(new GridBagLayout());
+        biographyArea.setWrapText(true);
+        biographyArea.setPrefRowCount(5);
+        skillsList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        skillsList.setPrefHeight(170);
 
-        biographyArea.setLineWrap(true);
-        biographyArea.setWrapStyleWord(true);
-        skillsList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-        skillsList.setVisibleRowCount(7);
-
-        JPanel form = FormLayout.createForm("My freelancer profile");
+        VBox form = FormLayout.createForm("My freelancer profile");
+        form.setPrefWidth(UiConstants.WIDE_FORM_WIDTH);
         FormLayout.addField(form, "Biography (up to " + ProfileService.MAX_BIOGRAPHY_LENGTH + " characters)",
-                new JScrollPane(biographyArea), null);
+                biographyArea, null);
         FormLayout.addField(form, "Skills (up to " + ProfileService.MAX_SKILLS + ", Ctrl+click to choose several)",
-                new JScrollPane(skillsList), null);
+                skillsList, null);
         FormLayout.addField(form, "Portfolio links (separate with spaces or commas)", linksField, null);
-        FormLayout.addRow(form, messageLabel, UiConstants.SPACING_MEDIUM);
-        FormLayout.addRow(form, saveButton, 0);
-        add(form);
+        FormLayout.addRow(form, messageLabel);
+        saveButton.getStyleClass().add("primary");
+        FormLayout.addRow(form, saveButton);
+        setCenteredContent(form);
 
-        saveButton.addActionListener(e -> save());
+        saveButton.setOnAction(event -> save());
         load();
     }
 
     private void load() {
         long userId = currentUserId();
-        saveButton.setEnabled(false);
+        saveButton.setDisable(true);
         runInBackground(() -> new Loaded(profileService.getAvailableSkills(), profileService.getProfile(userId)),
                 loaded -> {
-                    skillsModel.clear();
-                    loaded.skills().forEach(skillsModel::addElement);
+                    skillsList.getItems().setAll(loaded.skills());
                     display(loaded.profile());
-                    saveButton.setEnabled(true);
+                    saveButton.setDisable(false);
                 });
     }
 
@@ -80,15 +71,16 @@ public class FreelancerProfilePanel extends BasePanel {
         long userId = currentUserId();
         String biography = biographyArea.getText();
         String links = linksField.getText();
-        List<Long> skillIds = skillsList.getSelectedValuesList().stream().map(SkillDto::skillId).toList();
-        saveButton.setEnabled(false);
+        List<Long> skillIds = skillsList.getSelectionModel().getSelectedItems().stream()
+                .map(SkillDto::skillId)
+                .toList();
+        saveButton.setDisable(true);
         runInBackground(() -> profileService.updateProfile(userId, userId, biography, links, skillIds), saved -> {
-            saveButton.setEnabled(true);
+            saveButton.setDisable(false);
             display(saved);
-            messageLabel.setForeground(UiConstants.SUCCESS);
-            messageLabel.setText("Profile saved");
+            FormLayout.showSuccess(messageLabel, "Profile saved");
         }, error -> {
-            saveButton.setEnabled(true);
+            saveButton.setDisable(false);
             FormLayout.showFailure(this, messageLabel, error);
         });
     }
@@ -97,10 +89,12 @@ public class FreelancerProfilePanel extends BasePanel {
         biographyArea.setText(profile.biography());
         linksField.setText(profile.portfolioLinks());
         Set<Long> chosen = profile.skills().stream().map(SkillDto::skillId).collect(Collectors.toSet());
-        int[] indices = IntStream.range(0, skillsModel.size())
-                .filter(i -> chosen.contains(skillsModel.get(i).skillId()))
-                .toArray();
-        skillsList.setSelectedIndices(indices);
+        skillsList.getSelectionModel().clearSelection();
+        for (SkillDto skill : skillsList.getItems()) {
+            if (chosen.contains(skill.skillId())) {
+                skillsList.getSelectionModel().select(skill);
+            }
+        }
     }
 
     private static long currentUserId() {

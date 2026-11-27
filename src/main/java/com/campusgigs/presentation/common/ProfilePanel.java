@@ -3,40 +3,36 @@ package com.campusgigs.presentation.common;
 import com.campusgigs.dto.UserDto;
 import com.campusgigs.service.UserService;
 import com.campusgigs.util.SessionManager;
-
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
-import java.awt.GridBagLayout;
+import javafx.scene.Parent;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 
 /** Basic profile of the logged-in user (F3): shows email and role, edits the full name. */
 public class ProfilePanel extends BasePanel {
 
-    private static final long serialVersionUID = 1L;
+    private final UserService userService;
 
-    private final transient UserService userService;
-
-    private final JLabel emailValue = new JLabel();
-    private final JLabel roleValue = new JLabel();
-    private final JTextField nameField = new JTextField(UiConstants.TEXT_FIELD_COLUMNS);
-    private final JLabel messageLabel = FormLayout.messageLabel();
-    private final JButton saveButton = new JButton("Save");
+    private final Label emailValue = new Label();
+    private final Label roleValue = new Label();
+    private final TextField nameField = new TextField();
+    private final Label messageLabel = FormLayout.messageLabel();
+    private final Button saveButton = new Button("Save");
 
     public ProfilePanel(UserService userService) {
         this.userService = userService;
-        setLayout(new GridBagLayout());
 
-        JPanel form = FormLayout.createForm("My profile");
+        VBox form = FormLayout.createForm("My profile");
         FormLayout.addField(form, "Email", emailValue, null);
         FormLayout.addField(form, "Role", roleValue, null);
         FormLayout.addField(form, "Full name", nameField, null);
-        FormLayout.addRow(form, messageLabel, UiConstants.SPACING_MEDIUM);
-        FormLayout.addRow(form, saveButton, 0);
-        add(form);
+        FormLayout.addRow(form, messageLabel);
+        saveButton.getStyleClass().add("primary");
+        FormLayout.addRow(form, saveButton);
+        setCenteredContent(form);
 
-        saveButton.addActionListener(e -> save());
+        saveButton.setOnAction(event -> save());
         load();
     }
 
@@ -48,21 +44,29 @@ public class ProfilePanel extends BasePanel {
     private void save() {
         long userId = SessionManager.getInstance().getCurrentUser().userId();
         String name = nameField.getText();
-        saveButton.setEnabled(false);
+        saveButton.setDisable(true);
         runInBackground(() -> userService.updateProfile(userId, name), updated -> {
-            saveButton.setEnabled(true);
+            saveButton.setDisable(false);
             SessionManager.getInstance().setCurrentUser(updated);
             display(updated);
-            messageLabel.setForeground(UiConstants.SUCCESS);
-            messageLabel.setText("Profile saved");
-            DashboardPanel dashboard = (DashboardPanel) SwingUtilities.getAncestorOfClass(DashboardPanel.class, this);
+            FormLayout.showSuccess(messageLabel, "Profile saved");
+            DashboardPanel dashboard = dashboard();
             if (dashboard != null) {
                 dashboard.refreshHeader();
             }
         }, error -> {
-            saveButton.setEnabled(true);
+            saveButton.setDisable(false);
             FormLayout.showFailure(this, messageLabel, error);
         });
+    }
+
+    private DashboardPanel dashboard() {
+        for (Parent parent = getParent(); parent != null; parent = parent.getParent()) {
+            if (parent instanceof DashboardPanel dashboard) {
+                return dashboard;
+            }
+        }
+        return null;
     }
 
     private void display(UserDto user) {

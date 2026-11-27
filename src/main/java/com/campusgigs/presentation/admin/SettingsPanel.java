@@ -2,17 +2,14 @@ package com.campusgigs.presentation.admin;
 
 import com.campusgigs.presentation.common.BasePanel;
 import com.campusgigs.presentation.common.FormLayout;
-import com.campusgigs.presentation.common.UiConstants;
 import com.campusgigs.service.SettingsService;
 import com.campusgigs.util.SessionManager;
-
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-import java.awt.GridBagLayout;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 
 /**
  * Admin settings screen (F12): initial token balance, platform fee and the application
@@ -20,35 +17,33 @@ import java.util.Map;
  */
 public class SettingsPanel extends BasePanel {
 
-    private static final long serialVersionUID = 1L;
-
-    private final transient SettingsService settingsService;
+    private final SettingsService settingsService;
 
     /** Setting key to its input field, in the order shown. */
-    private final Map<String, JTextField> fields = new LinkedHashMap<>();
-    private transient Map<String, String> loadedValues = Map.of();
-    private final JLabel messageLabel = FormLayout.messageLabel();
-    private final JButton saveButton = new JButton("Save settings");
+    private final Map<String, TextField> fields = new LinkedHashMap<>();
+    private Map<String, String> loadedValues = Map.of();
+    private final Label messageLabel = FormLayout.messageLabel();
+    private final Button saveButton = new Button("Save settings");
 
     public SettingsPanel(SettingsService settingsService) {
         this.settingsService = settingsService;
-        setLayout(new GridBagLayout());
 
-        JPanel form = FormLayout.createForm("Platform settings");
+        VBox form = FormLayout.createForm("Platform settings");
         addSetting(form, SettingsService.KEY_INITIAL_TOKEN_BALANCE, "Initial token balance for new users (0 - 100000)");
         addSetting(form, SettingsService.KEY_PLATFORM_FEE_PERCENT, "Platform fee percent (0 - 50)");
         addSetting(form, SettingsService.KEY_MAX_APPLICATIONS_PER_FREELANCER,
                 "Max open applications per freelancer (1 - 50)");
-        FormLayout.addRow(form, messageLabel, UiConstants.SPACING_MEDIUM);
-        FormLayout.addRow(form, saveButton, 0);
-        add(form);
+        FormLayout.addRow(form, messageLabel);
+        saveButton.getStyleClass().add("primary");
+        FormLayout.addRow(form, saveButton);
+        setCenteredContent(form);
 
-        saveButton.addActionListener(e -> save());
+        saveButton.setOnAction(event -> save());
         load(true);
     }
 
-    private void addSetting(JPanel form, String key, String label) {
-        JTextField field = new JTextField(UiConstants.TEXT_FIELD_COLUMNS);
+    private void addSetting(VBox form, String key, String label) {
+        TextField field = new TextField();
         fields.put(key, field);
         FormLayout.addField(form, label, field, null);
     }
@@ -58,13 +53,13 @@ public class SettingsPanel extends BasePanel {
      * ({@code fillFields} false) so it can be corrected; only the stored copy is refreshed.
      */
     private void load(boolean fillFields) {
-        saveButton.setEnabled(false);
+        saveButton.setDisable(true);
         runInBackground(settingsService::getAll, values -> {
             loadedValues = values;
             if (fillFields) {
                 fields.forEach((key, field) -> field.setText(values.getOrDefault(key, "")));
             }
-            saveButton.setEnabled(true);
+            saveButton.setDisable(false);
         });
     }
 
@@ -78,18 +73,16 @@ public class SettingsPanel extends BasePanel {
             }
         });
         if (changed.isEmpty()) {
-            messageLabel.setForeground(UiConstants.MUTED_TEXT);
-            messageLabel.setText("Nothing to save");
+            FormLayout.showInfo(messageLabel, "Nothing to save");
             return;
         }
-        saveButton.setEnabled(false);
+        saveButton.setDisable(true);
         runInBackground(() -> {
             changed.forEach((key, value) -> settingsService.update(adminId, key, value));
             return null;
         }, done -> {
             load(true);
-            messageLabel.setForeground(UiConstants.SUCCESS);
-            messageLabel.setText("Settings saved");
+            FormLayout.showSuccess(messageLabel, "Settings saved");
         }, error -> {
             load(false);
             FormLayout.showFailure(this, messageLabel, error);

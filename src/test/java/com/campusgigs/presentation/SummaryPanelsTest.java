@@ -79,6 +79,7 @@ class SummaryPanelsTest {
 
     @Test
     void clientSummaryLoadsTheGigsOfTheLoggedInClient() {
+        FxTestSupport.startToolkit();
         logIn(Role.CLIENT);
         lenient().when(gigService.listClientGigs(5)).thenReturn(List.of());
 
@@ -89,6 +90,7 @@ class SummaryPanelsTest {
 
     @Test
     void freelancerSummaryLoadsApplicationsGigsAndEarnings() {
+        FxTestSupport.startToolkit();
         logIn(Role.FREELANCER);
         ApplicationDto pending = new ApplicationDto(1, 1, "Gig", GigStatus.OPEN, 5, "User", "Proposal",
                 ApplicationStatus.PENDING, LocalDateTime.now());
@@ -105,6 +107,7 @@ class SummaryPanelsTest {
 
     @Test
     void adminSummaryAsksForTheOpenDisputes() {
+        FxTestSupport.startToolkit();
         logIn(Role.ADMIN);
         lenient().when(disputeService.listDisputes(5, DisputeStatus.OPEN)).thenReturn(List.of());
 

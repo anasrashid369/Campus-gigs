@@ -91,16 +91,21 @@ import com.campusgigs.service.impl.WalletServiceImpl;
 
 import org.hibernate.SessionFactory;
 
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 import java.time.Clock;
 import java.util.EnumMap;
 import java.util.Map;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.stage.Stage;
 
 /**
  * Application entry point and the one place where concrete classes are wired
  * together: DAOs into services, services into screens. Team members register their
  * screens in {@link #registerScreens} with {@code frame.addNavigationItem(...)}.
+ * The JavaFX runtime is started by {@link App}; everything else runs from {@link #start(Stage)}
+ * on the JavaFX Application Thread.
  */
 public final class Main {
 
@@ -108,16 +113,28 @@ public final class Main {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(Main::start);
+        Application.launch(App.class, args);
     }
 
-    private static void start() {
+    /** Starts JavaFX; kept separate so {@code Main} itself does not have to be an Application. */
+    public static final class App extends Application {
+
+        @Override
+        public void start(Stage stage) {
+            Main.start(stage);
+        }
+    }
+
+    private static void start(Stage stage) {
         SessionFactory db;
         try {
             db = HibernateSessionFactory.getInstance();
         } catch (ConfigurationException e) {
-            JOptionPane.showMessageDialog(null, e.getMessage(), "Campus Gigs cannot start",
-                    JOptionPane.ERROR_MESSAGE);
+            Alert alert = new Alert(Alert.AlertType.ERROR, e.getMessage(), ButtonType.OK);
+            alert.setTitle("Campus Gigs cannot start");
+            alert.setHeaderText(null);
+            alert.showAndWait();
+            Platform.exit();
             return;
         }
         TransactionManager transactions = new HibernateTransactionManager(db);
@@ -165,7 +182,7 @@ public final class Main {
                 walletService, transactionService, earningsService, disputeService, lifecycleService,
                 gigService, applicationService, gigSearchService, monitoringService, notificationService));
         frame.showCard(MainFrame.LOGIN_CARD);
-        frame.setVisible(true);
+        frame.show(stage);
     }
 
     /** The services the screens need; add a field when a new screen needs another service. */

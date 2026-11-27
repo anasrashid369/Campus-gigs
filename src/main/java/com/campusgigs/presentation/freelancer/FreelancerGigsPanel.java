@@ -2,6 +2,7 @@ package com.campusgigs.presentation.freelancer;
 
 import com.campusgigs.dto.GigDto;
 import com.campusgigs.pattern.state.GigAction;
+import com.campusgigs.presentation.common.Dialogs;
 import com.campusgigs.presentation.common.StatusFormat;
 import com.campusgigs.presentation.common.TablePanel;
 import com.campusgigs.presentation.common.TextPrompt;
@@ -9,12 +10,10 @@ import com.campusgigs.presentation.common.TokenFormat;
 import com.campusgigs.service.GigLifecycleService;
 import com.campusgigs.service.GigService;
 import com.campusgigs.util.SessionManager;
-
-import javax.swing.JButton;
-import javax.swing.JOptionPane;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import javafx.scene.control.Button;
 
 /**
  * The gigs the freelancer was hired for (F25): deadlines, overdue marks, delivering the work and
@@ -23,19 +22,19 @@ import java.util.Optional;
  */
 public class FreelancerGigsPanel extends TablePanel<GigDto> {
 
-    private static final long serialVersionUID = 1L;
     private static final String OVERDUE = "Overdue";
 
-    private final transient GigService gigService;
-    private final transient GigLifecycleService lifecycleService;
-    private JButton submitButton;
-    private JButton disputeButton;
+    private final GigService gigService;
+    private final GigLifecycleService lifecycleService;
+    private Button submitButton;
+    private Button disputeButton;
 
     public FreelancerGigsPanel(GigService gigService, GigLifecycleService lifecycleService) {
         super("My Gigs", List.of("Title", "Budget", "Deadline", "Status", ""), gig -> toCells(gig, LocalDate.now()));
         this.gigService = gigService;
         this.lifecycleService = lifecycleService;
         submitButton = addAction("Submit work", true, this::submitWork);
+        submitButton.getStyleClass().add("primary");
         disputeButton = addAction("Raise dispute", true, this::raiseDispute);
         addAction("Refresh", false, this::load);
         load();
@@ -57,8 +56,8 @@ public class FreelancerGigsPanel extends TablePanel<GigDto> {
         if (submitButton == null) {
             return;
         }
-        submitButton.setEnabled(row.isPresent() && allows(row.get(), GigAction.SUBMIT));
-        disputeButton.setEnabled(row.isPresent() && allows(row.get(), GigAction.RAISE_DISPUTE));
+        submitButton.setDisable(!(row.isPresent() && allows(row.get(), GigAction.SUBMIT)));
+        disputeButton.setDisable(!(row.isPresent() && allows(row.get(), GigAction.RAISE_DISPUTE)));
     }
 
     private boolean allows(GigDto gig, GigAction action) {
@@ -72,10 +71,8 @@ public class FreelancerGigsPanel extends TablePanel<GigDto> {
 
     private void submitWork() {
         selected().ifPresent(gig -> {
-            int answer = JOptionPane.showConfirmDialog(this,
-                    "Hand in your work for \"" + gig.title() + "\"? The client will review it.",
-                    "Submit work", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-            if (answer == JOptionPane.YES_OPTION) {
+            if (Dialogs.confirm(this, "Submit work",
+                    "Hand in your work for \"" + gig.title() + "\"? The client will review it.")) {
                 long freelancerId = currentUserId();
                 runInBackground(() -> lifecycleService.submitWork(freelancerId, gig.gigId()), submitted -> load());
             }

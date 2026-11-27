@@ -20,6 +20,7 @@ import com.campusgigs.model.Role;
 import com.campusgigs.model.TransactionType;
 import com.campusgigs.service.MonitoringService;
 import com.campusgigs.util.SessionManager;
+import com.campusgigs.presentation.FxTestSupport;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -90,6 +91,7 @@ class MonitoringTabsTest {
 
     @Test
     void theMonitoringPanelLoadsAllThreeListsForTheAdmin() {
+        FxTestSupport.startToolkit();
         SessionManager.getInstance().setCurrentUser(
                 new UserDto(9, Role.ADMIN, "Admin", "a@example.com", AccountStatus.ACTIVE));
         lenient().when(monitoringService.listGigs(9, null)).thenReturn(List.of());

@@ -1,28 +1,25 @@
 package com.campusgigs.presentation.admin;
 
 import com.campusgigs.dto.CategoryDto;
+import com.campusgigs.presentation.common.Dialogs;
 import com.campusgigs.presentation.common.TablePanel;
 import com.campusgigs.service.AdminService;
 import com.campusgigs.util.SessionManager;
-
-import javax.swing.JButton;
-import javax.swing.JOptionPane;
 import java.util.List;
 import java.util.Optional;
+import javafx.scene.control.Button;
 
 /** Admin screen for gig categories (F8): add, rename, activate and deactivate. */
 public class CategoriesPanel extends TablePanel<CategoryDto> {
 
-    private static final long serialVersionUID = 1L;
-
-    private final transient AdminService adminService;
-    private final JButton toggleButton;
+    private final AdminService adminService;
+    private final Button toggleButton;
 
     public CategoriesPanel(AdminService adminService) {
         super("Gig categories", List.of("Name", "Status"),
                 category -> new Object[] {category.name(), category.active() ? "Active" : "Inactive"});
         this.adminService = adminService;
-        addAction("Add", false, this::add);
+        addAction("Add", false, this::add).getStyleClass().add("primary");
         addAction("Rename", true, this::rename);
         toggleButton = addAction("Deactivate", true, this::toggle);
         load();
@@ -41,24 +38,19 @@ public class CategoriesPanel extends TablePanel<CategoryDto> {
     }
 
     private void add() {
-        String name = JOptionPane.showInputDialog(this, "Name of the new category:", "Add category",
-                JOptionPane.QUESTION_MESSAGE);
-        if (name != null) {
+        Dialogs.input(this, "Add category", "Name of the new category:", "").ifPresent(name -> {
             long adminId = adminId();
             runInBackground(() -> adminService.addCategory(adminId, name), added -> load());
-        }
+        });
     }
 
     private void rename() {
-        selected().ifPresent(category -> {
-            Object name = JOptionPane.showInputDialog(this, "New name for \"" + category.name() + "\":",
-                    "Rename category", JOptionPane.QUESTION_MESSAGE, null, null, category.name());
-            if (name != null) {
-                long adminId = adminId();
-                runInBackground(() -> adminService.renameCategory(adminId, category.categoryId(), name.toString()),
-                        renamed -> load());
-            }
-        });
+        selected().ifPresent(category -> Dialogs.input(this, "Rename category",
+                "New name for \"" + category.name() + "\":", category.name()).ifPresent(name -> {
+            long adminId = adminId();
+            runInBackground(() -> adminService.renameCategory(adminId, category.categoryId(), name),
+                    renamed -> load());
+        }));
     }
 
     private void toggle() {

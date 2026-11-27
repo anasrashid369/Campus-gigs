@@ -6,67 +6,65 @@ import com.campusgigs.presentation.common.FormLayout;
 import com.campusgigs.presentation.common.UiConstants;
 import com.campusgigs.service.AuthService;
 import com.campusgigs.util.Validators;
-
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JPasswordField;
-import javax.swing.JTextField;
-import java.awt.GridBagLayout;
-import java.util.Arrays;
+import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 
 /** Login screen. Checks only that both fields are filled; the real check is in {@link AuthService}. */
 public class LoginPanel extends BasePanel {
 
-    private static final long serialVersionUID = 1L;
-
-    private final transient AuthService authService;
+    private final AuthService authService;
     private final MainFrame frame;
 
-    private final JTextField emailField = new JTextField(UiConstants.TEXT_FIELD_COLUMNS);
-    private final JPasswordField passwordField = new JPasswordField(UiConstants.TEXT_FIELD_COLUMNS);
-    private final JLabel messageLabel = FormLayout.messageLabel();
-    private final JButton loginButton = new JButton("Log in");
+    private final TextField emailField = new TextField();
+    private final PasswordField passwordField = new PasswordField();
+    private final Label messageLabel = FormLayout.messageLabel();
+    private final Button loginButton = new Button("Log in");
 
     public LoginPanel(AuthService authService, MainFrame frame) {
         this.authService = authService;
         this.frame = frame;
-        setLayout(new GridBagLayout());
+        getStyleClass().add("auth-screen");
 
-        JPanel form = FormLayout.createForm("Log in to " + UiConstants.APP_TITLE);
+        VBox form = FormLayout.createForm("Log in to " + UiConstants.APP_TITLE);
+        Label subtitle = new Label("The student marketplace for campus gigs");
+        subtitle.getStyleClass().add("muted");
+        FormLayout.addRow(form, subtitle);
+        emailField.setPromptText("you@university.edu");
         FormLayout.addField(form, "Email", emailField, null);
         FormLayout.addField(form, "Password", passwordField, null);
-        FormLayout.addRow(form, messageLabel, UiConstants.SPACING_MEDIUM);
-        FormLayout.addRow(form, loginButton, UiConstants.SPACING_MEDIUM);
-        JButton registerLink = new JButton("No account yet? Register");
-        registerLink.setBorderPainted(false);
-        registerLink.setContentAreaFilled(false);
-        registerLink.setForeground(UiConstants.PRIMARY);
-        FormLayout.addRow(form, registerLink, 0);
-        add(form);
+        FormLayout.addRow(form, messageLabel);
+        loginButton.getStyleClass().add("primary");
+        loginButton.setMaxWidth(Double.MAX_VALUE);
+        FormLayout.addRow(form, loginButton);
+        Hyperlink registerLink = new Hyperlink("No account yet? Register");
+        FormLayout.addRow(form, registerLink);
+        setCenteredContent(form);
 
-        loginButton.addActionListener(e -> logIn());
-        passwordField.addActionListener(e -> logIn());
-        registerLink.addActionListener(e -> frame.showCard(MainFrame.REGISTER_CARD));
+        loginButton.setOnAction(event -> logIn());
+        emailField.setOnAction(event -> passwordField.requestFocus());
+        passwordField.setOnAction(event -> logIn());
+        registerLink.setOnAction(event -> frame.showCard(MainFrame.REGISTER_CARD));
     }
 
     private void logIn() {
         String email = emailField.getText();
-        char[] typed = passwordField.getPassword();
-        String password = new String(typed);
-        Arrays.fill(typed, '\0');
+        String password = passwordField.getText();
         if (Validators.isBlank(email) || password.isEmpty()) {
-            messageLabel.setText("Please enter your email and password");
+            FormLayout.showError(messageLabel, "Please enter your email and password");
             return;
         }
-        messageLabel.setText(FormLayout.NO_MESSAGE);
-        loginButton.setEnabled(false);
+        FormLayout.clear(messageLabel);
+        loginButton.setDisable(true);
         runInBackground(() -> authService.login(email, password), user -> {
-            loginButton.setEnabled(true);
-            passwordField.setText("");
+            loginButton.setDisable(false);
+            passwordField.clear();
             frame.startSession(user);
         }, error -> {
-            loginButton.setEnabled(true);
+            loginButton.setDisable(false);
             FormLayout.showFailure(this, messageLabel, error);
         });
     }

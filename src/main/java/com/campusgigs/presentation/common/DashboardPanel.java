@@ -4,51 +4,49 @@ import com.campusgigs.dto.UserDto;
 import com.campusgigs.model.Role;
 import com.campusgigs.presentation.MainFrame;
 import com.campusgigs.util.SessionManager;
-
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import java.awt.BorderLayout;
-import java.awt.CardLayout;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
+import java.util.Map;
 import java.util.function.Supplier;
+import javafx.geometry.Insets;
+import javafx.scene.Node;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 
 /**
- * Layout shared by the three role dashboards: a bar with the user's name, role and a
- * Logout button; a navigation column on the left; and the selected screen on the right.
+ * Layout shared by the three role dashboards: a navigation column on the left, a bar with the
+ * user's name, role and a Logout button at the top, and the selected screen in the middle.
  * The navigation buttons come from {@link MainFrame#getNavigationItems}, so team members
  * add screens there instead of editing the dashboards.
  */
-public abstract class DashboardPanel extends JPanel {
-
-    private static final long serialVersionUID = 1L;
+public abstract class DashboardPanel extends BorderPane {
 
     private static final String HOME = "home";
-    private static final int NAV_WIDTH = 190;
+    private static final String ACTIVE = "active";
 
-    private final CardLayout screens = new CardLayout();
-    private final JPanel screenArea = new JPanel(screens);
-    private final Set<String> createdScreens = new HashSet<>();
-    private final JLabel userLabel = new JLabel();
+    private final StackPane screenArea = new StackPane();
+    private final Map<String, Node> createdScreens = new HashMap<>();
+    private final Map<String, Button> navButtons = new HashMap<>();
+    private final Label userName = new Label();
+    private final Label roleChip = new Label();
 
     protected DashboardPanel(UserDto user, MainFrame frame, String welcomeText) {
-        super(new BorderLayout());
-        setBackground(UiConstants.BACKGROUND);
-        add(createUserBar(frame, user.role()), BorderLayout.NORTH);
-        add(createNavigation(frame.getNavigationItems(user.role())), BorderLayout.WEST);
-        screenArea.setBackground(UiConstants.BACKGROUND);
-        screenArea.add(createWelcome(user, welcomeText, frame.getHomeWidgets(user.role())), HOME);
-        add(screenArea, BorderLayout.CENTER);
+        getStyleClass().add("dashboard");
+        setLeft(createNavigation(frame.getNavigationItems(user.role())));
+        BorderPane main = new BorderPane();
+        main.setTop(createUserBar(frame, user.role()));
+        main.setCenter(screenArea);
+        setCenter(main);
+        createdScreens.put(HOME, createWelcome(user, welcomeText, frame.getHomeWidgets(user.role())));
+        open(HOME, null);
         showUser(user);
     }
 
@@ -58,95 +56,78 @@ public abstract class DashboardPanel extends JPanel {
     }
 
     private void showUser(UserDto user) {
-        userLabel.setText(user.fullName() + "  |  " + roleName(user));
+        userName.setText(user.fullName());
+        String role = user.role().name();
+        roleChip.setText(role.charAt(0) + role.substring(1).toLowerCase(Locale.ROOT));
     }
 
-    private JPanel createUserBar(MainFrame frame, Role role) {
-        JPanel bar = new JPanel(new BorderLayout());
-        bar.setBackground(UiConstants.SURFACE);
-        bar.setBorder(BorderFactory.createEmptyBorder(UiConstants.SPACING_MEDIUM, UiConstants.SPACING_LARGE,
-                UiConstants.SPACING_MEDIUM, UiConstants.SPACING_LARGE));
-        userLabel.setFont(UiConstants.BODY_FONT);
-        userLabel.setForeground(UiConstants.TEXT);
-        JButton logout = new JButton("Logout");
-        logout.addActionListener(e -> frame.endSession());
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, UiConstants.SPACING_MEDIUM, 0));
-        right.setOpaque(false);
-        for (Supplier<JComponent> widget : frame.getHeaderWidgets(role)) {
-            right.add(widget.get());
+    private HBox createUserBar(MainFrame frame, Role role) {
+        userName.getStyleClass().add("user-name");
+        roleChip.getStyleClass().add("role-chip");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox bar = new HBox(userName, roleChip, spacer);
+        bar.getStyleClass().add("top-bar");
+        for (Supplier<? extends Node> widget : frame.getHeaderWidgets(role)) {
+            bar.getChildren().add(widget.get());
         }
-        right.add(logout);
-        bar.add(userLabel, BorderLayout.WEST);
-        bar.add(right, BorderLayout.EAST);
+        Button logout = new Button("Logout");
+        logout.setOnAction(event -> frame.endSession());
+        bar.getChildren().add(logout);
         return bar;
     }
 
-    private JPanel createNavigation(List<NavigationItem> items) {
-        JPanel nav = new JPanel();
-        nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS));
-        nav.setBackground(UiConstants.PRIMARY_DARK);
-        nav.setBorder(BorderFactory.createEmptyBorder(UiConstants.SPACING_LARGE, UiConstants.SPACING_MEDIUM,
-                UiConstants.SPACING_LARGE, UiConstants.SPACING_MEDIUM));
-        nav.setPreferredSize(new Dimension(NAV_WIDTH, 0));
-        addNavButton(nav, "Home", () -> screens.show(screenArea, HOME));
+    private VBox createNavigation(List<NavigationItem> items) {
+        Label brand = new Label(UiConstants.APP_TITLE);
+        brand.getStyleClass().add("brand");
+        VBox nav = new VBox(brand);
+        nav.getStyleClass().add("sidebar");
+        nav.setMinWidth(Region.USE_PREF_SIZE);
+        addNavButton(nav, HOME, "Home", null);
         for (int i = 0; i < items.size(); i++) {
             NavigationItem item = items.get(i);
-            String key = "screen-" + i;
-            addNavButton(nav, item.label(), () -> open(key, item));
+            addNavButton(nav, "screen-" + i, item.label(), item.screen());
         }
         return nav;
     }
 
-    private static void addNavButton(JPanel nav, String text, Runnable action) {
-        JButton button = new JButton(text);
-        button.setAlignmentX(Component.LEFT_ALIGNMENT);
-        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, button.getPreferredSize().height));
-        button.addActionListener(e -> action.run());
-        nav.add(button);
-        nav.add(Box.createVerticalStrut(UiConstants.SPACING_MEDIUM));
+    private void addNavButton(VBox nav, String key, String text, Supplier<? extends Node> screen) {
+        Button button = new Button(text);
+        button.getStyleClass().add("nav-button");
+        button.setMaxWidth(Double.MAX_VALUE);
+        button.setOnAction(event -> open(key, screen));
+        navButtons.put(key, button);
+        nav.getChildren().add(button);
     }
 
-    /** Creates the screen on first use, then shows it. */
-    private void open(String key, NavigationItem item) {
-        if (createdScreens.add(key)) {
-            screenArea.add(item.screen().get(), key);
+    /** Creates the screen on first use, then shows it and marks its button. */
+    private void open(String key, Supplier<? extends Node> screen) {
+        Node node = createdScreens.computeIfAbsent(key, k -> screen.get());
+        screenArea.getChildren().setAll(node);
+        navButtons.forEach((k, button) -> {
+            button.getStyleClass().remove(ACTIVE);
+            if (k.equals(key)) {
+                button.getStyleClass().add(ACTIVE);
+            }
+        });
+    }
+
+    private static Node createWelcome(UserDto user, String welcomeText, List<Supplier<? extends Node>> widgets) {
+        Label hello = new Label("Welcome, " + user.fullName());
+        hello.getStyleClass().add("welcome-title");
+        Label hint = new Label(welcomeText);
+        hint.getStyleClass().add("muted");
+        VBox welcome = new VBox(UiConstants.SPACING_MEDIUM, hello, hint);
+        welcome.setPadding(new Insets(UiConstants.SPACING_XLARGE + 8));
+        VBox summary = new VBox(UiConstants.SPACING_LARGE);
+        VBox.setMargin(summary, new Insets(UiConstants.SPACING_XLARGE, 0, 0, 0));
+        for (Supplier<? extends Node> widget : widgets) {
+            summary.getChildren().add(widget.get());
         }
-        screens.show(screenArea, key);
-    }
-
-    private static JPanel createWelcome(UserDto user, String welcomeText, List<Supplier<JPanel>> widgets) {
-        JPanel welcome = new JPanel(new BorderLayout(0, UiConstants.SPACING_XLARGE));
-        welcome.setBackground(UiConstants.BACKGROUND);
-        welcome.setBorder(BorderFactory.createEmptyBorder(UiConstants.SPACING_XLARGE, UiConstants.SPACING_XLARGE,
-                UiConstants.SPACING_XLARGE, UiConstants.SPACING_XLARGE));
-        JPanel text = new JPanel();
-        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        text.setOpaque(false);
-        JLabel hello = new JLabel("Welcome, " + user.fullName());
-        hello.setFont(UiConstants.TITLE_FONT);
-        hello.setForeground(UiConstants.PRIMARY);
-        hello.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JLabel hint = new JLabel(welcomeText);
-        hint.setFont(UiConstants.BODY_FONT);
-        hint.setForeground(UiConstants.MUTED_TEXT);
-        hint.setAlignmentX(Component.LEFT_ALIGNMENT);
-        text.add(hello);
-        text.add(Box.createVerticalStrut(UiConstants.SPACING_MEDIUM));
-        text.add(hint);
-        welcome.add(text, BorderLayout.NORTH);
-
-        JPanel summary = new JPanel();
-        summary.setLayout(new BoxLayout(summary, BoxLayout.Y_AXIS));
-        summary.setOpaque(false);
-        for (Supplier<JPanel> widget : widgets) {
-            summary.add(widget.get());
-        }
-        welcome.add(summary, BorderLayout.CENTER);
-        return welcome;
-    }
-
-    private static String roleName(UserDto user) {
-        String name = user.role().name();
-        return name.charAt(0) + name.substring(1).toLowerCase(Locale.ROOT);
+        welcome.getChildren().add(summary);
+        ScrollPane scroll = new ScrollPane(welcome);
+        scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("form-scroll");
+        return scroll;
     }
 }

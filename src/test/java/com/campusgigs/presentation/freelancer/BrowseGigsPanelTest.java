@@ -21,6 +21,7 @@ import com.campusgigs.service.ApplicationService;
 import com.campusgigs.service.GigSearchService;
 import com.campusgigs.service.GigService;
 import com.campusgigs.util.SessionManager;
+import com.campusgigs.presentation.FxTestSupport;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -85,6 +86,7 @@ class BrowseGigsPanelTest {
 
     @Test
     void loadsTheCategoriesAndSearchesWithNoConditionsOnOpening() {
+        FxTestSupport.startToolkit();
         SessionManager.getInstance().setCurrentUser(
                 new UserDto(3, Role.FREELANCER, "Free", "f@example.com", AccountStatus.ACTIVE));
         lenient().when(searchService.search(3, GigFilter.none())).thenReturn(List.of());

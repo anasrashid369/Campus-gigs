@@ -15,6 +15,7 @@ import com.campusgigs.service.GigLifecycleService;
 import com.campusgigs.service.GigService;
 import com.campusgigs.service.ProfileService;
 import com.campusgigs.util.SessionManager;
+import com.campusgigs.presentation.FxTestSupport;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -56,6 +57,7 @@ class ClientGigsPanelTest {
 
     @Test
     void loadsTheGigsOfTheLoggedInClient() {
+        FxTestSupport.startToolkit();
         SessionManager.getInstance().setCurrentUser(
                 new UserDto(1, Role.CLIENT, "Client", "c@example.com", AccountStatus.ACTIVE));
         lenient().when(gigService.listClientGigs(1)).thenReturn(List.of(gig(GigStatus.OPEN, null)));

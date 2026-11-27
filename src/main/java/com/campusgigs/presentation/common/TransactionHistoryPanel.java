@@ -1,7 +1,6 @@
 package com.campusgigs.presentation.common;
 
 import com.campusgigs.dto.TransactionDto;
-
 import java.util.List;
 
 /**
@@ -9,8 +8,6 @@ import java.util.List;
  * The owning screen loads the rows with {@link #showHistory}.
  */
 public class TransactionHistoryPanel extends TablePanel<TransactionDto> {
-
-    private static final long serialVersionUID = 1L;
 
     private static final List<String> COLUMNS = List.of("Date", "Type", "Amount", "Gig", "Reference");
     private static final String NO_VALUE = "-";

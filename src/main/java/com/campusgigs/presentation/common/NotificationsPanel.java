@@ -3,22 +3,20 @@ package com.campusgigs.presentation.common;
 import com.campusgigs.dto.NotificationDto;
 import com.campusgigs.service.NotificationService;
 import com.campusgigs.util.SessionManager;
-
 import java.util.List;
 
 /** The logged-in user's notifications (F4), newest first, with mark as read. */
 public class NotificationsPanel extends TablePanel<NotificationDto> {
 
-    private static final long serialVersionUID = 1L;
     private static final int RECEIVED_WIDTH = 130;
-    private static final int MESSAGE_WIDTH = 460;
-    private static final int STATUS_WIDTH = 60;
+    private static final int MESSAGE_WIDTH = 480;
+    private static final int STATUS_WIDTH = 70;
 
-    private final transient NotificationService notificationService;
-    private final transient Runnable onChange;
+    private final NotificationService notificationService;
+    private final Runnable onChange;
 
     /**
-     * @param onChange called on the EDT after notifications were marked as read, so the
+     * @param onChange called on the UI thread after notifications were marked as read, so the
      *                 header badge can refresh its count
      */
     public NotificationsPanel(NotificationService notificationService, Runnable onChange) {

@@ -9,41 +9,38 @@ import com.campusgigs.presentation.common.TokenFormat;
 import com.campusgigs.presentation.common.UiConstants;
 import com.campusgigs.service.MonitoringService;
 import com.campusgigs.util.SessionManager;
-
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import java.awt.BorderLayout;
-import java.awt.FlowLayout;
 import java.util.List;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
 
 /** All gigs on the platform, filtered by status (F9). */
 class GigsMonitorTab extends BasePanel {
 
-    private static final long serialVersionUID = 1L;
     private static final String NO_VALUE = "-";
 
-    private final transient MonitoringService monitoringService;
-    private final JComboBox<Choice<GigStatus>> statusBox = new JComboBox<>();
+    private final MonitoringService monitoringService;
+    private final ComboBox<Choice<GigStatus>> statusBox = new ComboBox<>();
     private final MonitorTable<GigDto> table;
 
     GigsMonitorTab(MonitoringService monitoringService) {
         this.monitoringService = monitoringService;
-        setLayout(new BorderLayout(0, UiConstants.SPACING_MEDIUM));
-        statusBox.addItem(new Choice<>("All statuses", null));
+        statusBox.getItems().add(new Choice<>("All statuses", null));
         for (GigStatus status : GigStatus.values()) {
-            statusBox.addItem(new Choice<>(StatusFormat.gigStatus(status), status));
+            statusBox.getItems().add(new Choice<>(StatusFormat.gigStatus(status), status));
         }
-        statusBox.addActionListener(e -> load());
+        statusBox.getSelectionModel().selectFirst();
+        statusBox.setOnAction(event -> load());
         table = new MonitorTable<>("Gigs", List.of("Title", "Budget", "Deadline", "Status", "Client", "Freelancer"),
                 GigsMonitorTab::toCells, this::load);
 
-        JPanel filter = new JPanel(new FlowLayout(FlowLayout.LEFT, UiConstants.SPACING_MEDIUM, 0));
-        filter.setOpaque(false);
-        filter.add(new JLabel("Status:"));
-        filter.add(statusBox);
-        add(filter, BorderLayout.NORTH);
-        add(table, BorderLayout.CENTER);
+        HBox filter = new HBox(UiConstants.SPACING_MEDIUM, new Label("Status:"), statusBox);
+        filter.setAlignment(Pos.CENTER_LEFT);
+        setMargin(filter, new Insets(0, 0, UiConstants.SPACING_MEDIUM, 0));
+        setTop(filter);
+        setCenter(table);
         load();
     }
 
@@ -61,8 +58,7 @@ class GigsMonitorTab extends BasePanel {
 
     private void load() {
         long adminId = SessionManager.getInstance().getCurrentUser().userId();
-        @SuppressWarnings("unchecked")
-        Choice<GigStatus> chosen = (Choice<GigStatus>) statusBox.getSelectedItem();
+        Choice<GigStatus> chosen = statusBox.getValue();
         GigStatus status = chosen == null ? null : chosen.value();
         runInBackground(() -> monitoringService.listGigs(adminId, status), table::show);
     }

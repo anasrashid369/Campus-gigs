@@ -13,6 +13,7 @@ import com.campusgigs.model.GigStatus;
 import com.campusgigs.model.Role;
 import com.campusgigs.service.ApplicationService;
 import com.campusgigs.util.SessionManager;
+import com.campusgigs.presentation.FxTestSupport;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -42,6 +43,7 @@ class MyApplicationsPanelTest {
 
     @Test
     void loadsTheApplicationsOfTheLoggedInFreelancer() {
+        FxTestSupport.startToolkit();
         SessionManager.getInstance().setCurrentUser(
                 new UserDto(3, Role.FREELANCER, "Free", "f@example.com", AccountStatus.ACTIVE));
         lenient().when(applicationService.listForFreelancer(3)).thenReturn(List.of());

@@ -7,6 +7,7 @@ import com.campusgigs.dto.GigSort;
 import com.campusgigs.dto.SkillDto;
 import com.campusgigs.exception.ValidationException;
 import com.campusgigs.presentation.common.BasePanel;
+import com.campusgigs.presentation.common.Dialogs;
 import com.campusgigs.presentation.common.FormLayout;
 import com.campusgigs.presentation.common.TablePanel;
 import com.campusgigs.presentation.common.TextPrompt;
@@ -16,24 +17,17 @@ import com.campusgigs.service.ApplicationService;
 import com.campusgigs.service.GigSearchService;
 import com.campusgigs.service.GigService;
 import com.campusgigs.util.SessionManager;
-
-import javax.swing.BoxLayout;
-import javax.swing.DefaultListCellRenderer;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.FlowLayout;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.VBox;
 
 /**
  * Find Gigs (F22, F23): search the open gigs by word, category and budget, order them, read the
@@ -42,19 +36,18 @@ import java.util.stream.Collectors;
  */
 public class BrowseGigsPanel extends BasePanel {
 
-    private static final long serialVersionUID = 1L;
     private static final CategoryDto ALL_CATEGORIES = new CategoryDto(0, "All categories", true);
 
-    private final transient GigSearchService searchService;
-    private final transient GigService gigService;
-    private final transient ApplicationService applicationService;
+    private final GigSearchService searchService;
+    private final GigService gigService;
+    private final ApplicationService applicationService;
 
-    private final JTextField keywordField = new JTextField(14);
-    private final JComboBox<CategoryDto> categoryBox = new JComboBox<>();
-    private final JTextField minField = new JTextField(6);
-    private final JTextField maxField = new JTextField(6);
-    private final JComboBox<GigSort> sortBox = new JComboBox<>(GigSort.values());
-    private final JLabel messageLabel = FormLayout.messageLabel();
+    private final TextField keywordField = new TextField();
+    private final ComboBox<CategoryDto> categoryBox = new ComboBox<>();
+    private final TextField minField = new TextField();
+    private final TextField maxField = new TextField();
+    private final ComboBox<GigSort> sortBox = new ComboBox<>();
+    private final Label messageLabel = FormLayout.messageLabel();
     private final Results results;
 
     public BrowseGigsPanel(GigSearchService searchService, GigService gigService,
@@ -62,50 +55,39 @@ public class BrowseGigsPanel extends BasePanel {
         this.searchService = searchService;
         this.gigService = gigService;
         this.applicationService = applicationService;
-        setLayout(new BorderLayout(0, UiConstants.SPACING_MEDIUM));
 
-        categoryBox.addItem(ALL_CATEGORIES);
-        categoryBox.setRenderer(new DefaultListCellRenderer() {
-            private static final long serialVersionUID = 1L;
+        categoryBox.getItems().add(ALL_CATEGORIES);
+        categoryBox.getSelectionModel().selectFirst();
+        FormLayout.showItemsAs(categoryBox, CategoryDto::name);
+        sortBox.getItems().setAll(GigSort.values());
+        sortBox.setValue(GigSort.NEWEST);
 
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
-                                                         boolean selected, boolean focus) {
-                return super.getListCellRendererComponent(list,
-                        value instanceof CategoryDto category ? category.name() : value, index, selected, focus);
-            }
-        });
         results = new Results(this::viewDetails, this::apply, this::search);
-
-        JPanel top = new JPanel();
-        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
-        top.setOpaque(false);
-        top.add(createFilterBar());
-        top.add(messageLabel);
-        add(top, BorderLayout.NORTH);
-        add(results, BorderLayout.CENTER);
-
+        VBox top = new VBox(UiConstants.SPACING_SMALL, createFilterBar(), messageLabel);
+        setMargin(top, new Insets(0, 0, UiConstants.SPACING_LARGE, 0));
+        setTop(top);
+        setCenter(results);
         loadCategories();
         search();
     }
 
-    private JPanel createFilterBar() {
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, UiConstants.SPACING_MEDIUM, 0));
-        bar.setOpaque(false);
-        bar.add(new JLabel("Search:"));
-        bar.add(keywordField);
-        bar.add(categoryBox);
-        bar.add(new JLabel("Budget"));
-        bar.add(minField);
-        bar.add(new JLabel("to"));
-        bar.add(maxField);
-        bar.add(sortBox);
-        JButton searchButton = new JButton("Search");
-        searchButton.addActionListener(e -> search());
-        JButton clearButton = new JButton("Clear");
-        clearButton.addActionListener(e -> clear());
-        bar.add(searchButton);
-        bar.add(clearButton);
+    private FlowPane createFilterBar() {
+        keywordField.setPromptText("Search by title or description");
+        keywordField.setPrefColumnCount(18);
+        keywordField.setOnAction(event -> search());
+        minField.setPromptText("Min");
+        minField.setPrefColumnCount(5);
+        maxField.setPromptText("Max");
+        maxField.setPrefColumnCount(5);
+        Button searchButton = new Button("Search");
+        searchButton.getStyleClass().add("primary");
+        searchButton.setOnAction(event -> search());
+        Button clearButton = new Button("Clear");
+        clearButton.setOnAction(event -> clear());
+        FlowPane bar = new FlowPane(UiConstants.SPACING_MEDIUM, UiConstants.SPACING_MEDIUM, keywordField,
+                categoryBox, new Label("Budget"), minField, new Label("to"), maxField, sortBox, searchButton,
+                clearButton);
+        bar.setAlignment(Pos.CENTER_LEFT);
         return bar;
     }
 
@@ -132,15 +114,14 @@ public class BrowseGigsPanel extends BasePanel {
     }
 
     private void loadCategories() {
-        runInBackground(gigService::getActiveCategories,
-                categories -> categories.forEach(categoryBox::addItem));
+        runInBackground(gigService::getActiveCategories, categories -> categoryBox.getItems().addAll(categories));
     }
 
     private void search() {
         GigFilter filter;
         try {
-            filter = parseFilter(keywordField.getText(), (CategoryDto) categoryBox.getSelectedItem(),
-                    minField.getText(), maxField.getText(), (GigSort) sortBox.getSelectedItem());
+            filter = parseFilter(keywordField.getText(), categoryBox.getValue(), minField.getText(),
+                    maxField.getText(), sortBox.getValue());
         } catch (ValidationException e) {
             FormLayout.showFailure(this, messageLabel, e);
             return;
@@ -148,17 +129,16 @@ public class BrowseGigsPanel extends BasePanel {
         long freelancerId = currentUserId();
         runInBackground(() -> searchService.search(freelancerId, filter), found -> {
             results.show(found);
-            messageLabel.setForeground(UiConstants.MUTED_TEXT);
-            messageLabel.setText(found.size() + (found.size() == 1 ? " gig found" : " gigs found"));
+            FormLayout.showInfo(messageLabel, found.size() + (found.size() == 1 ? " gig found" : " gigs found"));
         }, error -> FormLayout.showFailure(this, messageLabel, error));
     }
 
     private void clear() {
-        keywordField.setText("");
-        categoryBox.setSelectedIndex(0);
-        minField.setText("");
-        maxField.setText("");
-        sortBox.setSelectedItem(GigSort.NEWEST);
+        keywordField.clear();
+        categoryBox.getSelectionModel().selectFirst();
+        minField.clear();
+        maxField.clear();
+        sortBox.setValue(GigSort.NEWEST);
         search();
     }
 
@@ -168,17 +148,10 @@ public class BrowseGigsPanel extends BasePanel {
     }
 
     private void showDetails(GigDto gig, List<SkillDto> skills) {
-        JTextArea description = new JTextArea(gig.description(), 8, 40);
-        description.setEditable(false);
-        description.setLineWrap(true);
-        description.setWrapStyleWord(true);
-        JPanel content = new JPanel();
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.add(new JLabel("Budget: " + TokenFormat.tokens(gig.budget()) + " tokens    Deadline: " + gig.deadline()));
-        content.add(new JLabel("Skills: " + (skills.isEmpty() ? "none asked"
-                : skills.stream().map(SkillDto::name).collect(Collectors.joining(", ")))));
-        content.add(new JScrollPane(description));
-        JOptionPane.showMessageDialog(this, content, gig.title(), JOptionPane.PLAIN_MESSAGE);
+        Dialogs.showText(this, gig.title(), gig.description(),
+                "Budget: " + TokenFormat.tokens(gig.budget()) + " tokens    Deadline: " + gig.deadline(),
+                "Skills: " + (skills.isEmpty() ? "none asked"
+                        : skills.stream().map(SkillDto::name).collect(Collectors.joining(", "))));
     }
 
     private void apply() {
@@ -190,8 +163,7 @@ public class BrowseGigsPanel extends BasePanel {
             proposal.ifPresent(text -> {
                 long freelancerId = currentUserId();
                 runInBackground(() -> applicationService.apply(freelancerId, gig.gigId(), text), sent -> {
-                    JOptionPane.showMessageDialog(this, "Your application was sent.", "Application sent",
-                            JOptionPane.INFORMATION_MESSAGE);
+                    Dialogs.info(this, "Application sent", "Your application was sent.");
                     search();
                 });
             });
@@ -205,12 +177,10 @@ public class BrowseGigsPanel extends BasePanel {
     /** The table of results with its buttons. */
     private static final class Results extends TablePanel<GigDto> {
 
-        private static final long serialVersionUID = 1L;
-
         Results(Runnable viewDetails, Runnable apply, Runnable refresh) {
-            super("Open gigs", List.of("Title", "Budget", "Deadline"), gig -> toCells(gig));
+            super("Open gigs", List.of("Title", "Budget", "Deadline"), BrowseGigsPanel::toCells);
             addAction("View details", true, viewDetails);
-            addAction("Apply", true, apply);
+            addAction("Apply", true, apply).getStyleClass().add("primary");
             addAction("Refresh", false, refresh);
         }
 
