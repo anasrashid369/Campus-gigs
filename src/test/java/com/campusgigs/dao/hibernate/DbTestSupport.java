@@ -84,8 +84,9 @@ final class DbTestSupport {
         return gig.getGigId();
     }
 
-    /** Removes a test gig together with its disputes and ledger rows. */
+    /** Removes a test gig together with its review, disputes and ledger rows. */
     static void deleteGig(SessionFactory db, long gigId) {
+        execute(db, "DELETE FROM Reviews WHERE gig_id = ?1", gigId);
         execute(db, "DELETE FROM Disputes WHERE gig_id = ?1", gigId);
         execute(db, "DELETE FROM Transactions WHERE gig_id = ?1", gigId);
         execute(db, "DELETE FROM Gigs WHERE gig_id = ?1", gigId);

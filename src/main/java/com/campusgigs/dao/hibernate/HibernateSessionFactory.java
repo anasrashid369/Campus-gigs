@@ -7,6 +7,7 @@ import com.campusgigs.dao.hibernate.entity.FreelancerProfileEntity;
 import com.campusgigs.dao.hibernate.entity.GigEntity;
 import com.campusgigs.dao.hibernate.entity.GigSkillEntity;
 import com.campusgigs.dao.hibernate.entity.NotificationEntity;
+import com.campusgigs.dao.hibernate.entity.ReviewEntity;
 import com.campusgigs.dao.hibernate.entity.SettingEntity;
 import com.campusgigs.dao.hibernate.entity.SkillEntity;
 import com.campusgigs.dao.hibernate.entity.TransactionEntity;
@@ -29,7 +30,7 @@ public final class HibernateSessionFactory {
         UserEntity.class, WalletEntity.class, TransactionEntity.class, SettingEntity.class,
         CategoryEntity.class, SkillEntity.class, UserSkillEntity.class, FreelancerProfileEntity.class,
         GigEntity.class, GigSkillEntity.class, ApplicationEntity.class, DisputeEntity.class,
-        NotificationEntity.class,
+        NotificationEntity.class, ReviewEntity.class,
     };
 
     private static SessionFactory instance;

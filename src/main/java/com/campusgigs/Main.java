@@ -18,6 +18,7 @@ import com.campusgigs.dao.hibernate.GigDaoHibernate;
 import com.campusgigs.dao.hibernate.HibernateSessionFactory;
 import com.campusgigs.dao.hibernate.HibernateTransactionManager;
 import com.campusgigs.dao.hibernate.NotificationDaoHibernate;
+import com.campusgigs.dao.hibernate.ReviewDaoHibernate;
 import com.campusgigs.dao.hibernate.SettingsDaoHibernate;
 import com.campusgigs.dao.hibernate.SkillDaoHibernate;
 import com.campusgigs.dao.hibernate.TransactionDaoHibernate;
@@ -56,6 +57,7 @@ import com.campusgigs.presentation.freelancer.FreelancerGigsPanel;
 import com.campusgigs.presentation.freelancer.FreelancerProfilePanel;
 import com.campusgigs.presentation.freelancer.FreelancerSummaryPanel;
 import com.campusgigs.presentation.freelancer.MyApplicationsPanel;
+import com.campusgigs.presentation.freelancer.ReviewsPanel;
 import com.campusgigs.service.AdminService;
 import com.campusgigs.service.ApplicationService;
 import com.campusgigs.service.AuthService;
@@ -68,6 +70,7 @@ import com.campusgigs.service.GigService;
 import com.campusgigs.service.MonitoringService;
 import com.campusgigs.service.NotificationService;
 import com.campusgigs.service.ProfileService;
+import com.campusgigs.service.ReviewService;
 import com.campusgigs.service.SettingsService;
 import com.campusgigs.service.TransactionService;
 import com.campusgigs.service.UserService;
@@ -84,6 +87,7 @@ import com.campusgigs.service.impl.GigServiceImpl;
 import com.campusgigs.service.impl.MonitoringServiceImpl;
 import com.campusgigs.service.impl.NotificationServiceImpl;
 import com.campusgigs.service.impl.ProfileServiceImpl;
+import com.campusgigs.service.impl.ReviewServiceImpl;
 import com.campusgigs.service.impl.SettingsServiceImpl;
 import com.campusgigs.service.impl.TransactionServiceImpl;
 import com.campusgigs.service.impl.UserServiceImpl;
@@ -174,13 +178,16 @@ public final class Main {
         UserService userService = new UserServiceImpl(userDao);
         AdminService adminService = new AdminServiceImpl(userDao, categoryDao, skillDao);
         ProfileService profileService = new ProfileServiceImpl(userDao, profileDao, skillDao, transactions);
+        ReviewService reviewService = new ReviewServiceImpl(new ReviewDaoHibernate(db), gigDao, userDao, transactions,
+                EventBus.getInstance());
 
         MainFrame frame = new MainFrame();
         frame.addCard(MainFrame.LOGIN_CARD, new LoginPanel(authService, frame));
         frame.addCard(MainFrame.REGISTER_CARD, new RegisterPanel(authService, frame));
         registerScreens(frame, new Services(userService, adminService, profileService, settingsService,
                 walletService, transactionService, earningsService, disputeService, lifecycleService,
-                gigService, applicationService, gigSearchService, monitoringService, notificationService));
+                gigService, applicationService, gigSearchService, monitoringService, notificationService,
+                reviewService));
         frame.showCard(MainFrame.LOGIN_CARD);
         frame.show(stage);
     }
@@ -191,7 +198,8 @@ public final class Main {
                             EarningsService earnings, DisputeService disputes,
                             GigLifecycleService lifecycle, GigService gigs,
                             ApplicationService applications, GigSearchService search,
-                            MonitoringService monitoring, NotificationService notifications) {
+                            MonitoringService monitoring, NotificationService notifications,
+                            ReviewService reviews) {
     }
 
     /** One ranking per sort option; add a class here to offer a new ordering. */
@@ -216,7 +224,7 @@ public final class Main {
                 () -> new GigFormPanel(services.gigs(), services.profiles()));
         frame.addNavigationItem(Role.CLIENT, "My Gigs",
                 () -> new ClientGigsPanel(services.gigs(), services.profiles(), services.applications(),
-                        services.lifecycle()));
+                        services.lifecycle(), services.reviews()));
         frame.addNavigationItem(Role.FREELANCER, "Find Gigs",
                 () -> new BrowseGigsPanel(services.search(), services.gigs(), services.applications()));
         frame.addNavigationItem(Role.FREELANCER, "My Applications",
@@ -227,6 +235,7 @@ public final class Main {
                 () -> new EarningsPanel(services.earnings(), services.wallets(), services.transactions()));
         frame.addNavigationItem(Role.FREELANCER, "Skills and Portfolio",
                 () -> new FreelancerProfilePanel(services.profiles()));
+        frame.addNavigationItem(Role.FREELANCER, "Reviews", () -> new ReviewsPanel(services.reviews()));
         frame.addNavigationItem(Role.ADMIN, "Users", () -> new UsersPanel(services.admin()));
         frame.addNavigationItem(Role.ADMIN, "Categories", () -> new CategoriesPanel(services.admin()));
         frame.addNavigationItem(Role.ADMIN, "Skills", () -> new SkillsPanel(services.admin()));

@@ -2,6 +2,7 @@ package com.campusgigs.presentation.client;
 
 import com.campusgigs.pattern.state.GigAction;
 import com.campusgigs.dto.GigDto;
+import com.campusgigs.model.GigStatus;
 import com.campusgigs.presentation.common.Dialogs;
 import com.campusgigs.presentation.common.StatusFormat;
 import com.campusgigs.presentation.common.TablePanel;
@@ -11,6 +12,7 @@ import com.campusgigs.service.ApplicationService;
 import com.campusgigs.service.GigLifecycleService;
 import com.campusgigs.service.GigService;
 import com.campusgigs.service.ProfileService;
+import com.campusgigs.service.ReviewService;
 import com.campusgigs.util.SessionManager;
 import java.util.List;
 import java.util.Optional;
@@ -20,7 +22,8 @@ import javafx.stage.Stage;
 
 /**
  * The client's own gigs (F14-F18): see their status, change or cancel an open gig, review its
- * applications and hire, then approve the work, ask for a revision or raise a dispute.
+ * applications and hire, then approve the work, ask for a revision or raise a dispute, and
+ * finally review the freelancer (F19).
  * Which buttons are available comes from {@link GigService#allowedActions}; the services
  * enforce the rules again when a button is used.
  */
@@ -32,6 +35,8 @@ public class ClientGigsPanel extends TablePanel<GigDto> {
     private final ProfileService profileService;
     private final ApplicationService applicationService;
     private final GigLifecycleService lifecycleService;
+    private final ReviewService reviewService;
+    private Set<Long> reviewedGigIds = Set.of();
 
     private Button editButton;
     private Button cancelButton;
@@ -39,20 +44,24 @@ public class ClientGigsPanel extends TablePanel<GigDto> {
     private Button revisionButton;
     private Button disputeButton;
     private Button applicationsButton;
+    private Button reviewButton;
 
     public ClientGigsPanel(GigService gigService, ProfileService profileService,
-                           ApplicationService applicationService, GigLifecycleService lifecycleService) {
+                           ApplicationService applicationService, GigLifecycleService lifecycleService,
+                           ReviewService reviewService) {
         super("My Gigs", List.of("Title", "Budget", "Deadline", "Status", "Freelancer"), ClientGigsPanel::toCells);
         this.gigService = gigService;
         this.profileService = profileService;
         this.applicationService = applicationService;
         this.lifecycleService = lifecycleService;
+        this.reviewService = reviewService;
         applicationsButton = addAction("Applications", true, this::showApplications);
         editButton = addAction("Edit", true, this::edit);
         cancelButton = addAction("Cancel gig", true, this::cancel);
         approveButton = addAction("Approve work", true, this::approve);
         revisionButton = addAction("Request revision", true, this::requestRevision);
         disputeButton = addAction("Raise dispute", true, this::raiseDispute);
+        reviewButton = addAction("Leave review", true, this::review);
         addAction("Refresh", false, this::load);
         approveButton.getStyleClass().add("primary");
         cancelButton.getStyleClass().add("danger");
@@ -82,16 +91,30 @@ public class ClientGigsPanel extends TablePanel<GigDto> {
         approveButton.setDisable(!allowed.contains(GigAction.APPROVE));
         revisionButton.setDisable(!allowed.contains(GigAction.REQUEST_REVISION));
         disputeButton.setDisable(!allowed.contains(GigAction.RAISE_DISPUTE));
+        reviewButton.setDisable(!row.map(this::canReview).orElse(false));
+    }
+
+    /** A client reviews an approved gig once; the service checks this again. */
+    private boolean canReview(GigDto gig) {
+        return gig.status() == GigStatus.APPROVED && !reviewedGigIds.contains(gig.gigId());
+    }
+
+    /** The gigs and which of them the client already reviewed, loaded together. */
+    private record Loaded(List<GigDto> gigs, Set<Long> reviewedGigIds) {
     }
 
     private void load() {
         long clientId = currentUserId();
-        runInBackground(() -> gigService.listClientGigs(clientId), this::setRows);
+        runInBackground(() -> new Loaded(gigService.listClientGigs(clientId),
+                reviewService.getReviewedGigIds(clientId)), loaded -> {
+                    reviewedGigIds = loaded.reviewedGigIds();
+                    setRows(loaded.gigs());
+                });
     }
 
     private void showApplications() {
         selected().ifPresent(gig -> {
-            Dialogs.modal(this, "Applications", new GigApplicationsPanel(applicationService, gig), 820, 460)
+            Dialogs.modal(this, "Applications", new GigApplicationsPanel(applicationService, reviewService, gig), 820, 460)
                     .showAndWait();
             load();
         });
@@ -143,6 +166,17 @@ public class ClientGigsPanel extends TablePanel<GigDto> {
                         + " characters)", 1, GigLifecycleService.MAX_DISPUTE_REASON_LENGTH).ifPresent(reason -> {
             long clientId = currentUserId();
             runInBackground(() -> lifecycleService.raiseDispute(clientId, gig.gigId(), reason), disputed -> load());
+        }));
+    }
+
+    private void review() {
+        selected().ifPresent(gig -> ReviewDialog.ask(this, gig).ifPresent(answer -> {
+            long clientId = currentUserId();
+            runInBackground(() -> reviewService.postReview(clientId, gig.gigId(), answer.rating(), answer.comment()),
+                    posted -> {
+                        Dialogs.info(this, "Review posted", "Thank you. Your review was posted.");
+                        load();
+                    });
         }));
     }
 
