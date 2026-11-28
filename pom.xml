@@ -17,9 +17,15 @@
         <mockito.version>5.11.0</mockito.version>
         <mysql.version>8.4.0</mysql.version>
         <hibernate.version>6.6.59.Final</hibernate.version>
+        <javafx.version>21.0.13</javafx.version>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-core</artifactId>

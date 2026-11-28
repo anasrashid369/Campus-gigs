@@ -18,6 +18,7 @@ import com.campusgigs.service.EarningsService;
 import com.campusgigs.service.TransactionService;
 import com.campusgigs.service.WalletService;
 import com.campusgigs.util.SessionManager;
+import com.campusgigs.presentation.FxTestSupport;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +51,7 @@ class EarningsPanelTest {
 
     /** Builds the panel and waits until its first background load has finished, so stubbing is safe. */
     private EarningsPanel openPanel() {
+        FxTestSupport.startToolkit();
         EarningsPanel panel = new EarningsPanel(earningsService, walletService, transactionService);
         verify(earningsService, timeout(3000)).getEarnings(USER_ID);
         verify(transactionService, timeout(3000)).getHistory(USER_ID);

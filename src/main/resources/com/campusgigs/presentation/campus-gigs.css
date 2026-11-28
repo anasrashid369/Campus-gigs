@@ -1,0 +1,371 @@
+/*
+ * Campus Gigs look and feel. Every screen uses these style classes instead of colours or
+ * fonts in Java code, so the whole app changes from this one file.
+ */
+
+.root {
+    -cg-primary: #2563eb;
+    -cg-primary-dark: #1d4ed8;
+    -cg-primary-soft: #dbeafe;
+    -cg-background: #f4f6fb;
+    -cg-surface: #ffffff;
+    -cg-border: #d5dbe6;
+    -cg-divider: #e5e7eb;
+    -cg-text: #111827;
+    -cg-muted: #6b7280;
+    -cg-error: #dc2626;
+    -cg-success: #16a34a;
+    -cg-sidebar: #0f172a;
+    -cg-sidebar-hover: #1e293b;
+
+    -fx-font-family: "Segoe UI", "Helvetica Neue", "Arial", sans-serif;
+    -fx-font-size: 13.5px;
+    -fx-background-color: -cg-background;
+    -fx-accent: -cg-primary;
+    -fx-focus-color: -cg-primary;
+    -fx-faint-focus-color: transparent;
+}
+
+.label {
+    -fx-text-fill: -cg-text;
+}
+
+/* ---------- Screens and cards ---------- */
+
+.screen {
+    -fx-padding: 24;
+    -fx-background-color: -cg-background;
+}
+
+/* A screen inside another screen (tabs, result tables) keeps the outer padding only. */
+.screen .screen {
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+}
+
+.widget {
+    -fx-background-color: transparent;
+}
+
+.auth-screen {
+    -fx-background-color: linear-gradient(to bottom right, #1e3a8a 0%, #2563eb 55%, #7c3aed 100%);
+}
+
+.form-card, .stat-card {
+    -fx-background-color: -cg-surface;
+    -fx-background-radius: 14;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.10), 20, 0, 0, 4);
+}
+
+.form-card {
+    -fx-padding: 28 32 28 32;
+    -fx-spacing: 14;
+}
+
+.stat-card {
+    -fx-padding: 18 20 18 20;
+    -fx-spacing: 6;
+}
+
+.form-scroll, .form-scroll > .viewport {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-padding: 0;
+    -fx-background-insets: 0;
+}
+
+/* ---------- Text ---------- */
+
+.form-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+}
+
+.screen-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+
+.welcome-title {
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+}
+
+.field-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #374151;
+    -fx-font-size: 12.5px;
+}
+
+.muted, .stat-caption {
+    -fx-text-fill: -cg-muted;
+}
+
+.stat-value {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+}
+
+.message {
+    -fx-font-size: 12.5px;
+    -fx-wrap-text: true;
+}
+
+.message-error {
+    -fx-text-fill: -cg-error;
+}
+
+.message-success {
+    -fx-text-fill: -cg-success;
+}
+
+.message-muted {
+    -fx-text-fill: -cg-muted;
+}
+
+/* ---------- Buttons ---------- */
+
+.button, .toggle-button {
+    -fx-background-color: -cg-surface;
+    -fx-background-radius: 8;
+    -fx-border-color: -cg-border;
+    -fx-border-radius: 8;
+    -fx-padding: 7 14 7 14;
+    -fx-text-fill: -cg-text;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #eef2ff;
+    -fx-border-color: #c7d2fe;
+}
+
+.button:pressed {
+    -fx-background-color: #e0e7ff;
+}
+
+.button:focused {
+    -fx-border-color: -cg-primary;
+}
+
+.button:disabled {
+    -fx-opacity: 0.45;
+}
+
+.button.primary {
+    -fx-background-color: -cg-primary;
+    -fx-border-color: -cg-primary;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.button.primary:hover {
+    -fx-background-color: -cg-primary-dark;
+    -fx-border-color: -cg-primary-dark;
+}
+
+.button.danger {
+    -fx-text-fill: -cg-error;
+}
+
+.hyperlink {
+    -fx-text-fill: -cg-primary;
+    -fx-border-color: transparent;
+    -fx-padding: 2 0 2 0;
+}
+
+.action-bar {
+    -fx-spacing: 8;
+    -fx-padding: 12 0 0 0;
+}
+
+/* ---------- Inputs ---------- */
+
+.text-field, .password-field, .combo-box, .date-picker, .list-view, .text-area {
+    -fx-background-color: -cg-surface;
+    -fx-background-radius: 8;
+    -fx-border-color: -cg-border;
+    -fx-border-radius: 8;
+}
+
+.text-field, .password-field {
+    -fx-padding: 7 10 7 10;
+}
+
+.text-field:focused, .password-field:focused, .combo-box:focused, .date-picker:focused,
+.list-view:focused, .text-area:focused {
+    -fx-border-color: -cg-primary;
+}
+
+.date-picker > .text-field {
+    -fx-border-color: transparent;
+}
+
+.text-area .content {
+    -fx-background-color: -cg-surface;
+    -fx-background-radius: 8;
+    -fx-padding: 6;
+}
+
+.list-view .list-cell:filled:selected {
+    -fx-background-color: -cg-primary-soft;
+    -fx-text-fill: #1e3a8a;
+}
+
+.combo-box .arrow-button, .date-picker .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.combo-box .list-cell {
+    -fx-background-color: transparent;
+}
+
+.combo-box-popup .list-view .list-cell:filled:hover {
+    -fx-background-color: #eef2ff;
+}
+
+/* ---------- Dashboard ---------- */
+
+.sidebar {
+    -fx-background-color: -cg-sidebar;
+    -fx-padding: 22 12 22 12;
+    -fx-spacing: 4;
+    -fx-pref-width: 220;
+}
+
+.brand {
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 10 18 10;
+}
+
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: #cbd5e1;
+    -fx-alignment: center-left;
+    -fx-padding: 10 14 10 14;
+}
+
+.nav-button:focused {
+    -fx-border-color: transparent;
+}
+
+.nav-button:hover {
+    -fx-background-color: -cg-sidebar-hover;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+}
+
+.nav-button.active {
+    -fx-background-color: -cg-primary;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.top-bar {
+    -fx-background-color: -cg-surface;
+    -fx-padding: 12 24 12 24;
+    -fx-spacing: 12;
+    -fx-alignment: center-left;
+    -fx-border-color: transparent transparent -cg-divider transparent;
+}
+
+.user-name {
+    -fx-font-weight: bold;
+}
+
+.role-chip {
+    -fx-background-color: #e0e7ff;
+    -fx-text-fill: #3730a3;
+    -fx-background-radius: 999;
+    -fx-padding: 2 10 2 10;
+    -fx-font-size: 12px;
+}
+
+.badge-unread {
+    -fx-background-color: #fef3c7;
+    -fx-border-color: #f59e0b;
+    -fx-text-fill: #92400e;
+    -fx-font-weight: bold;
+}
+
+/* ---------- Tables and tabs ---------- */
+
+.table-view {
+    -fx-background-color: -cg-surface;
+    -fx-background-radius: 12;
+    -fx-border-color: -cg-divider;
+    -fx-border-radius: 12;
+    -fx-padding: 4;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: -cg-surface;
+}
+
+.table-view .column-header, .table-view .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -cg-divider transparent;
+    -fx-padding: 6 4 6 4;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: -cg-muted;
+    -fx-font-weight: bold;
+    -fx-alignment: center-left;
+    -fx-padding: 0 6 0 6;
+}
+
+.table-row-cell {
+    -fx-cell-size: 36px;
+    -fx-background-color: -cg-surface;
+    -fx-border-color: transparent transparent #f1f5f9 transparent;
+}
+
+.table-row-cell:hover {
+    -fx-background-color: #f8fafc;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: -cg-primary-soft;
+}
+
+.table-row-cell:selected .table-cell {
+    -fx-text-fill: #1e3a8a;
+}
+
+.table-cell {
+    -fx-padding: 0 10 0 10;
+    -fx-border-color: transparent;
+    -fx-text-fill: -cg-text;
+}
+
+.tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: transparent;
+    -fx-padding: 6 14 6 14;
+}
+
+.tab-pane > .tab-header-area > .headers-region > .tab:selected {
+    -fx-border-color: transparent transparent -cg-primary transparent;
+    -fx-border-width: 0 0 2 0;
+}
+
+.tab-pane > .tab-header-area > .tab-header-background {
+    -fx-background-color: transparent;
+}
+
+.tab-pane > .tab-content-area {
+    -fx-padding: 12 0 0 0;
+}
+
+/* ---------- Dialogs ---------- */
+
+.dialog-pane {
+    -fx-background-color: -cg-surface;
+}
+
+.dialog-pane > .content {
+    -fx-padding: 16 20 8 20;
+}

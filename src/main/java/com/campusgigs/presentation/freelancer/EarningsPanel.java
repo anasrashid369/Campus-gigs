@@ -12,15 +12,14 @@ import com.campusgigs.service.EarningsService;
 import com.campusgigs.service.TransactionService;
 import com.campusgigs.service.WalletService;
 import com.campusgigs.util.SessionManager;
-
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-import java.awt.BorderLayout;
-import java.awt.FlowLayout;
-import java.awt.GridLayout;
 import java.util.List;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 
 /**
  * Freelancer earnings screen (F26, F27): available tokens, lifetime earnings after fees,
@@ -29,19 +28,18 @@ import java.util.List;
  */
 public class EarningsPanel extends BasePanel {
 
-    private static final long serialVersionUID = 1L;
     private static final String AMOUNT_HINT = "Enter a whole number of tokens";
 
-    private final transient EarningsService earningsService;
-    private final transient WalletService walletService;
-    private final transient TransactionService transactionService;
+    private final EarningsService earningsService;
+    private final WalletService walletService;
+    private final TransactionService transactionService;
     private final StatCard availableCard = new StatCard("Available to withdraw");
     private final StatCard earnedCard = new StatCard("Total earned (after fees)");
     private final StatCard pendingCard = new StatCard("Pending approval");
     private final StatCard withdrawnCard = new StatCard("Total withdrawn");
-    private final JTextField amountField = new JTextField(UiConstants.TEXT_FIELD_COLUMNS / 2);
-    private final JButton withdrawButton = new JButton("Withdraw");
-    private final JLabel messageLabel = FormLayout.messageLabel();
+    private final TextField amountField = new TextField();
+    private final Button withdrawButton = new Button("Withdraw");
+    private final Label messageLabel = FormLayout.messageLabel();
     private final TransactionHistoryPanel historyPanel = new TransactionHistoryPanel();
 
     public EarningsPanel(EarningsService earningsService, WalletService walletService,
@@ -49,40 +47,28 @@ public class EarningsPanel extends BasePanel {
         this.earningsService = earningsService;
         this.walletService = walletService;
         this.transactionService = transactionService;
-        setLayout(new BorderLayout(0, UiConstants.SPACING_LARGE));
 
-        JPanel cards = new JPanel(new GridLayout(1, 4, UiConstants.SPACING_LARGE, 0));
-        cards.setOpaque(false);
-        cards.add(availableCard);
-        cards.add(earnedCard);
-        cards.add(pendingCard);
-        cards.add(withdrawnCard);
-
-        JPanel top = new JPanel(new BorderLayout(0, UiConstants.SPACING_MEDIUM));
-        top.setOpaque(false);
-        top.add(cards, BorderLayout.NORTH);
-        top.add(createWithdrawForm(), BorderLayout.CENTER);
-        add(top, BorderLayout.NORTH);
-        add(historyPanel, BorderLayout.CENTER);
-
+        VBox top = new VBox(UiConstants.SPACING_MEDIUM,
+                StatCard.row(availableCard, earnedCard, pendingCard, withdrawnCard),
+                createWithdrawForm(), messageLabel);
+        setMargin(top, new Insets(0, 0, UiConstants.SPACING_LARGE, 0));
+        setTop(top);
+        setCenter(historyPanel);
         reload();
     }
 
-    private JPanel createWithdrawForm() {
-        JPanel form = new JPanel(new BorderLayout(0, UiConstants.SPACING_SMALL));
-        form.setOpaque(false);
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, UiConstants.SPACING_MEDIUM, 0));
-        row.setOpaque(false);
-        JLabel caption = new JLabel("Withdraw tokens (simulated, at least " + WalletService.MIN_WITHDRAWAL + "):");
-        caption.setFont(UiConstants.BODY_FONT);
+    private HBox createWithdrawForm() {
+        Label caption = new Label("Withdraw tokens (simulated, at least " + WalletService.MIN_WITHDRAWAL + "):");
         caption.setLabelFor(amountField);
-        row.add(caption);
-        row.add(amountField);
-        row.add(withdrawButton);
-        form.add(row, BorderLayout.NORTH);
-        form.add(messageLabel, BorderLayout.CENTER);
-        withdrawButton.addActionListener(e -> submitWithdrawal(amountField.getText()));
-        return form;
+        amountField.setPromptText("Amount");
+        amountField.setPrefColumnCount(8);
+        amountField.setOnAction(event -> submitWithdrawal(amountField.getText()));
+        withdrawButton.getStyleClass().add("primary");
+        withdrawButton.setOnAction(event -> submitWithdrawal(amountField.getText()));
+        HBox row = new HBox(UiConstants.SPACING_MEDIUM, caption, amountField, withdrawButton);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(UiConstants.SPACING_MEDIUM, 0, 0, 0));
+        return row;
     }
 
     private void reload() {
@@ -96,23 +82,21 @@ public class EarningsPanel extends BasePanel {
         try {
             amount = Long.parseLong(text.trim());
         } catch (NumberFormatException e) {
-            messageLabel.setForeground(UiConstants.ERROR);
-            messageLabel.setText(AMOUNT_HINT);
+            FormLayout.showError(messageLabel, AMOUNT_HINT);
             return;
         }
         long userId = currentUserId();
-        withdrawButton.setEnabled(false);
+        withdrawButton.setDisable(true);
         runInBackground(() -> {
             walletService.withdraw(userId, amount);
             return snapshot(userId);
         }, snapshot -> {
             show(snapshot);
-            amountField.setText("");
-            withdrawButton.setEnabled(true);
-            messageLabel.setForeground(UiConstants.SUCCESS);
-            messageLabel.setText(TokenFormat.tokens(amount) + " tokens withdrawn");
+            amountField.clear();
+            withdrawButton.setDisable(false);
+            FormLayout.showSuccess(messageLabel, TokenFormat.tokens(amount) + " tokens withdrawn");
         }, error -> {
-            withdrawButton.setEnabled(true);
+            withdrawButton.setDisable(false);
             FormLayout.showFailure(this, messageLabel, error);
         });
     }

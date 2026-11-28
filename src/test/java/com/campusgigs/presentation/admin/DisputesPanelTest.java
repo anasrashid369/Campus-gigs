@@ -15,6 +15,7 @@ import com.campusgigs.model.DisputeStatus;
 import com.campusgigs.model.Role;
 import com.campusgigs.service.DisputeService;
 import com.campusgigs.util.SessionManager;
+import com.campusgigs.presentation.FxTestSupport;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -65,6 +66,7 @@ class DisputesPanelTest {
 
     @Test
     void loadsTheOpenDisputesOfTheLoggedInAdmin() {
+        FxTestSupport.startToolkit();
         SessionManager.getInstance().setCurrentUser(
                 new UserDto(99, Role.ADMIN, "Admin", "admin@example.com", AccountStatus.ACTIVE));
         when(disputeService.listDisputes(99, DisputeStatus.OPEN)).thenReturn(List.of(open(1, "Late")));

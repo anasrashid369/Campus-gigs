@@ -2,12 +2,10 @@ package com.campusgigs.presentation.common;
 
 import com.campusgigs.exception.ResourceNotFoundException;
 import com.campusgigs.exception.ValidationException;
-
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
-import java.awt.Component;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javafx.application.Platform;
+import javafx.scene.Node;
 
 /**
  * Shows errors to the user without exposing technical details.
@@ -28,19 +26,19 @@ public final class ErrorDialog {
     /**
      * Shows an error message dialog. Safe to call from any thread.
      *
-     * @param parent the component the dialog is centred on, may be {@code null}
-     * @param error  the failure to report
+     * @param owner the node whose window the dialog belongs to, may be {@code null}
+     * @param error the failure to report
      */
-    public static void show(Component parent, Throwable error) {
+    public static void show(Node owner, Throwable error) {
         String message = messageFor(error);
         if (!isUserFacing(error)) {
             LOG.log(Level.WARNING, "Unexpected error shown to the user as a generic message", error);
         }
-        Runnable dialog = () -> JOptionPane.showMessageDialog(parent, message, "Error", JOptionPane.ERROR_MESSAGE);
-        if (SwingUtilities.isEventDispatchThread()) {
+        Runnable dialog = () -> Dialogs.error(owner, message);
+        if (Platform.isFxApplicationThread()) {
             dialog.run();
         } else {
-            SwingUtilities.invokeLater(dialog);
+            Platform.runLater(dialog);
         }
     }
 

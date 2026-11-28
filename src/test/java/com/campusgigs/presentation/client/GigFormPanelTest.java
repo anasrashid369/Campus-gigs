@@ -19,6 +19,7 @@ import com.campusgigs.model.Role;
 import com.campusgigs.service.GigService;
 import com.campusgigs.service.ProfileService;
 import com.campusgigs.util.SessionManager;
+import com.campusgigs.presentation.FxTestSupport;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -90,6 +91,7 @@ class GigFormPanelTest {
 
     @Test
     void theCreateFormLoadsCategoriesAndSkills() {
+        FxTestSupport.startToolkit();
         new GigFormPanel(gigService, profileService);
 
         verify(gigService, timeout(3000)).getActiveCategories();
@@ -98,6 +100,7 @@ class GigFormPanelTest {
 
     @Test
     void theEditFormAlsoLoadsTheSkillsOfTheGig() {
+        FxTestSupport.startToolkit();
         GigDto gig = new GigDto(10, 1, 7, null, "Logo", "Design a logo", 300, LocalDate.of(2026, 12, 31),
                 GigStatus.OPEN, LocalDateTime.now());
 

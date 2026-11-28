@@ -7,19 +7,14 @@ import com.campusgigs.model.ApplicationStatus;
 import com.campusgigs.model.GigStatus;
 import com.campusgigs.presentation.common.BasePanel;
 import com.campusgigs.presentation.common.StatCard;
-import com.campusgigs.presentation.common.UiConstants;
 import com.campusgigs.service.ApplicationService;
 import com.campusgigs.service.EarningsService;
 import com.campusgigs.service.GigService;
 import com.campusgigs.util.SessionManager;
-
-import java.awt.GridLayout;
 import java.util.List;
 
 /** The freelancer's home summary: pending applications, gigs in progress and tokens available. */
 public class FreelancerSummaryPanel extends BasePanel {
-
-    private static final long serialVersionUID = 1L;
 
     /** Everything the summary needs, loaded in one background call. */
     private record Loaded(List<ApplicationDto> applications, List<GigDto> gigs, EarningsDto earnings) {
@@ -31,10 +26,8 @@ public class FreelancerSummaryPanel extends BasePanel {
 
     public FreelancerSummaryPanel(ApplicationService applicationService, GigService gigService,
                                   EarningsService earningsService) {
-        setLayout(new GridLayout(1, 3, UiConstants.SPACING_LARGE, 0));
-        add(pendingCard);
-        add(progressCard);
-        add(tokensCard);
+        useAsWidget();
+        setCenter(StatCard.row(pendingCard, progressCard, tokensCard));
         long freelancerId = SessionManager.getInstance().getCurrentUser().userId();
         runInBackground(() -> new Loaded(applicationService.listForFreelancer(freelancerId),
                 gigService.listFreelancerGigs(freelancerId), earningsService.getEarnings(freelancerId)), this::show);
