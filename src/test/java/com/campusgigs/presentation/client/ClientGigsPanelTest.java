@@ -14,6 +14,7 @@ import com.campusgigs.service.ApplicationService;
 import com.campusgigs.service.GigLifecycleService;
 import com.campusgigs.service.GigService;
 import com.campusgigs.service.ProfileService;
+import com.campusgigs.service.ReviewService;
 import com.campusgigs.util.SessionManager;
 import com.campusgigs.presentation.FxTestSupport;
 import java.time.LocalDate;
@@ -32,6 +33,7 @@ class ClientGigsPanelTest {
     @Mock ProfileService profileService;
     @Mock ApplicationService applicationService;
     @Mock GigLifecycleService lifecycleService;
+    @Mock ReviewService reviewService;
 
     @AfterEach
     void logOut() {
@@ -62,8 +64,9 @@ class ClientGigsPanelTest {
                 new UserDto(1, Role.CLIENT, "Client", "c@example.com", AccountStatus.ACTIVE));
         lenient().when(gigService.listClientGigs(1)).thenReturn(List.of(gig(GigStatus.OPEN, null)));
 
-        new ClientGigsPanel(gigService, profileService, applicationService, lifecycleService);
+        new ClientGigsPanel(gigService, profileService, applicationService, lifecycleService, reviewService);
 
         verify(gigService, timeout(3000)).listClientGigs(1);
+        verify(reviewService, timeout(3000)).getReviewedGigIds(1);
     }
 }

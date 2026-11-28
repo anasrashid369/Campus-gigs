@@ -23,6 +23,7 @@ import javafx.scene.layout.FlowPane;
 public abstract class TablePanel<T> extends BasePanel {
 
     private final TableView<T> table = new TableView<>();
+    private final Label heading = new Label();
     private final FlowPane buttons = new FlowPane(UiConstants.SPACING_MEDIUM, UiConstants.SPACING_MEDIUM);
     private final List<Button> selectionButtons = new ArrayList<>();
 
@@ -45,7 +46,7 @@ public abstract class TablePanel<T> extends BasePanel {
         table.setPlaceholder(new Label("Nothing to show yet"));
         table.getSelectionModel().selectedItemProperty().addListener((observable, before, now) -> updateButtons());
 
-        Label heading = new Label(title);
+        heading.setText(title);
         heading.getStyleClass().add("screen-title");
         setMargin(heading, new Insets(0, 0, UiConstants.SPACING_MEDIUM + 4, 0));
         buttons.getStyleClass().add("action-bar");
@@ -69,6 +70,11 @@ public abstract class TablePanel<T> extends BasePanel {
             button.setDisable(true);
         }
         return button;
+    }
+
+    /** Changes the heading above the table, for example to add a total. */
+    protected void setTitle(String title) {
+        heading.setText(title);
     }
 
     /** Sets the preferred column widths in pixels, in column order; extra space is shared out. */

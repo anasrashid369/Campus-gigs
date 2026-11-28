@@ -103,7 +103,8 @@ public final class Dialogs {
         return stage;
     }
 
-    static void prepare(Dialog<?> dialog, Node owner, String title) {
+    /** Gives a custom dialog the app's title, style and owner window; call before showing it. */
+    public static void prepare(Dialog<?> dialog, Node owner, String title) {
         dialog.setTitle(title);
         dialog.setHeaderText(null);
         dialog.setGraphic(null);
